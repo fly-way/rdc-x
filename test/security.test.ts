@@ -91,6 +91,33 @@ await test('filesystem and consent boundaries', async t => {
   await t.test('terminal default is disabled', async () => {
     const terminal = new ProcessService(f.state, files.guard); await assert.rejects(() => terminal.start('owner', 'echo test', f.workspace, 5));
   });
+  await t.test('terminal command policy blocks and allowlists before execution', async () => {
+    f.state.config.terminalEnabled = true;
+    const terminal = new ProcessService(f.state, files.guard);
+    const ok = process.platform === 'win32' ? "Write-Output 'policy-ok'" : "printf 'policy-ok'";
+    const blocked = process.platform === 'win32' ? "Write-Output 'policy-blocked'" : "printf 'policy-blocked'";
+    try {
+      f.state.config.commandPolicyMode = 'blocklist';
+      f.state.config.blockedCommandPatterns = ['*policy-blocked*'];
+      await assert.rejects(() => terminal.start('owner', blocked, f.workspace, 5), /blocked by local policy/i);
+      assert.equal(terminal.sessions.size, 0);
+
+      f.state.config.commandPolicyMode = 'allowlist';
+      f.state.config.blockedCommandPatterns = [];
+      f.state.config.allowedCommandPatterns = [ok];
+      await assert.rejects(() => terminal.start('owner', blocked, f.workspace, 5), /not allowed by the local command allowlist/i);
+
+      const session = await terminal.start('owner', ok, f.workspace, 5);
+      await eventually(() => terminal.read(session.sessionId, 'owner').state !== 'running');
+      assert.match(terminal.read(session.sessionId, 'owner').output, /policy-ok/);
+    } finally {
+      await terminal.stopAll();
+      f.state.config.terminalEnabled = false;
+      f.state.config.commandPolicyMode = 'blocklist';
+      f.state.config.blockedCommandPatterns = [];
+      f.state.config.allowedCommandPatterns = [];
+    }
+  });
   await t.test('terminal output, ownership and process-tree stop', async () => {
     f.state.config.terminalEnabled = true; const terminal = new ProcessService(f.state, files.guard);
     try {
