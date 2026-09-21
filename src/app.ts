@@ -306,7 +306,7 @@ export function createApp(base: string) {
         throw error;
       }
       state.audit('server', 'started', { mcpPort, adminPort, tunnelPort });
-      void tunnelRuntime.autoStart().catch(error => state.audit('secure_tunnel_runtime', 'failed', { error: String(error?.message ?? error).slice(0, 500) }));
+      void tunnelRuntime.autoStart().catch((error: any) => state.audit('secure_tunnel_runtime', 'failed', { error: String(error?.message ?? error).slice(0, 500) }));
       return servers;
     }
   };
