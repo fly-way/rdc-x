@@ -17,9 +17,17 @@ await test('web UI exposes Chinese and English language selectors', () => {
   assert.match(app, /localStorage\.setItem\('rdcx-lang'/);
 });
 
-await test('dashboard uses wide desktop content and readable typography overrides', () => {
-  assert.match(css, /\.page-wrap\{padding:22px 22px 42px;max-width:none/);
-  assert.match(css, /\.nav-item\{height:48px[^}]*font-size:14px/);
-  assert.match(css, /\.page-heading h1\{font-size:28px/);
+await test('dashboard no longer exposes the local UI lock control', () => {
+  assert.doesNotMatch(html, /id="lockDashboard"/);
+  assert.doesNotMatch(app, /\$\('lockDashboard'\)/);
+  assert.doesNotMatch(html, /data-i18n="nav\.lock"/);
+});
+
+await test('dashboard uses a full-width, readable glass-style desktop layout', () => {
+  assert.match(css, /\.page-wrap\{padding:22px 22px 44px;max-width:none/);
+  assert.match(css, /\.nav-item\{[^}]*height:48px[^}]*font-size:14px/);
+  assert.match(css, /\.page-heading h1\{font-size:30px/);
   assert.match(css, /\.settings-card form\{max-width:none;width:100%\}/);
+  assert.match(css, /backdrop-filter:blur\(24px\)/);
+  assert.match(css, /border-radius:18px/);
 });
