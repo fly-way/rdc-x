@@ -40,7 +40,12 @@ async function api(url, body) {
     body: body === undefined ? undefined : JSON.stringify(body)
   });
   const result = await response.json();
-  if (!response.ok) throw new Error(result.error || 'Request failed');
+  if (!response.ok) {
+    if (response.status === 404 && url.startsWith('/tunnel/')) {
+      throw new Error('Secure Tunnel backend route is unavailable. The browser is using newer files than the running RDC-X process. Run Start-All.cmd again to restart the backend.');
+    }
+    throw new Error(result.error || 'Request failed');
+  }
   return result;
 }
 
