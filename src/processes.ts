@@ -14,6 +14,7 @@ type Session = {
   exitCode: number | null;
   output: string;
   discarded: number;
+  interactive: boolean;
   child: ChildProcess;
   timer?: NodeJS.Timeout;
 };
@@ -62,7 +63,7 @@ export class ProcessService {
     }
   }
 
-  async start(owner: string, command: string, cwd: string, seconds: number) {
+  async start(owner: string, command: string, cwd: string, seconds: number, interactive = false) {
     this.assertEnabled();
     this.assertCommandPolicy(command);
 
@@ -115,6 +116,7 @@ export class ProcessService {
       exitCode: null,
       output: '',
       discarded: 0,
+      interactive,
       child
     };
     this.sessions.set(session.id, session);
@@ -133,6 +135,11 @@ export class ProcessService {
       stream?.on('data', data => append(decoder.write(data)));
       stream?.on('end', () => append(decoder.end()));
     }
+
+    // Ordinary one-shot commands should see EOF on stdin. Keeping the pipe open
+    // can make Windows PowerShell wait indefinitely after the command finishes.
+    // Explicit interactive sessions keep stdin open for interact_with_process.
+    if (!interactive) child.stdin?.end();
 
     child.on('error', error => {
       append(`\n[spawn error] ${error.message}`);
@@ -180,6 +187,9 @@ export class ProcessService {
   async input(id: string, owner: string, text: string) {
     this.assertEnabled();
     const item = this.find(id, owner);
+    if (!item.interactive) {
+      throw new Error('Session is not interactive. Start it with interactive=true to send stdin.');
+    }
     if (item.state !== 'running' || !item.child.stdin?.writable) {
       throw new Error('Session is not accepting input.');
     }
