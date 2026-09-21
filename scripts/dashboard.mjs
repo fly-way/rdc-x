@@ -28,7 +28,7 @@ function launchDetached(command, args) {
 try {
   await adminApi('/state');
   const c = getConfig();
-  const url = `http://127.0.0.1:${c.adminPort}/#key=${encodeURIComponent(getKey())}&view=connections`;
+  const url = `http://127.0.0.1:${c.adminPort}/#key=${encodeURIComponent(getKey())}`;
 
   if (process.platform === 'win32') {
     // Use the Windows URL protocol handler directly. This is more reliable than
@@ -43,7 +43,7 @@ try {
     await launchDetached(process.platform === 'darwin' ? 'open' : 'xdg-open', [url]);
   }
 
-  console.log('Opened the local dashboard. The admin key was not printed.');
+  console.log('Opened the RDC-X Secure Tunnel sign-in page. The admin key was not printed.');
 } catch (e) {
   console.error('Dashboard unavailable: ' + e.message + '\nRun Start-All.cmd on this computer.');
   process.exitCode = 1;
