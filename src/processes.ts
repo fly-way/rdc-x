@@ -85,7 +85,15 @@ export class ProcessService {
     const win = process.platform === 'win32';
     const executable = win ? 'powershell.exe' : '/bin/sh';
     const args = win
-      ? ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', '[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new(); ' + command]
+      ? [
+          '-NoLogo',
+          '-NoProfile',
+          '-NonInteractive',
+          '-Command',
+          '[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new(); ' +
+            command +
+            '; if ($?) { exit 0 } else { exit 1 }'
+        ]
       : ['-c', command];
 
     const child = spawn(executable, args, {
