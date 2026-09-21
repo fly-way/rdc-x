@@ -1,42 +1,444 @@
 'use strict';
-const text = {
-  unlockTitle:'\u4f60\u7684\u7535\u8111\uff0c\u4f60\u6765\u638c\u63a7\u3002',unlockHint:'\u8bf7\u5728\u672c\u673a\u53cc\u51fb Dashboard.cmd\uff0c\u6216\u8f93\u5165\u672c\u5730\u7ba1\u7406\u5bc6\u94a5\u3002',unlock:'\u89e3\u9501\u63a7\u5236\u9762\u677f',lock:'\u9501\u5b9a\u9762\u677f',overview:'\u603b\u89c8',requests:'\u64cd\u4f5c\u5ba1\u6279',connections:'\u8fde\u63a5\u6388\u6743',sessions:'\u7ec8\u7aef\u4f1a\u8bdd',audit:'\u5ba1\u8ba1\u65e5\u5fd7',settings:'\u8bbf\u95ee\u7b56\u7565',heroTitle:'\u4f60\u7684\u7535\u8111\uff0c\u4f60\u6765\u638c\u63a7\u3002',pause:'\u6682\u505c\u8fdc\u7a0b\u8bbf\u95ee',resume:'\u6062\u590d\u8fdc\u7a0b\u8bbf\u95ee',service:'\u670d\u52a1\u72b6\u6001',pending:'\u7b49\u5f85\u672c\u673a\u5ba1\u6279',roots:'\u6388\u6743\u76ee\u5f55',linked:'\u5df2\u6388\u6743\u8fde\u63a5',localApproval:'\u53ea\u6709\u4f60\u80fd\u6279\u51c6\u64cd\u4f5c',leastPrivilege:'\u660e\u786e\u76ee\u5f55\u8fb9\u754c',connectTitle:'\u63a5\u5165 ChatGPT',endpointLabel:'\u8fdc\u7a0b MCP \u5730\u5740',step1:'\u542f\u52a8 HTTPS \u96a7\u9053\uff0c\u4ec5\u8f6c\u53d1 MCP \u7aef\u53e3\u3002',step2:'\u5728 ChatGPT \u521b\u5efa\u81ea\u5b9a\u4e49\u5e94\u7528\uff0c\u8ba4\u8bc1\u9009\u62e9 OAuth\u3002',step3:'\u6838\u5bf9\u914d\u5bf9\u9a8c\u8bc1\u7801\uff0c\u5728\u6b64\u9762\u677f\u6279\u51c6\u3002',boundaries:'\u5b89\u5168\u8fb9\u754c',writePolicy:'\u6587\u4ef6\u4fee\u6539',terminalPolicy:'\u7ec8\u7aef\u547d\u4ee4',dashboardPolicy:'\u7ba1\u7406\u9762\u677f',safetyHint:'\u7ec8\u7aef\u4f7f\u7528\u5f53\u524d\u7cfb\u7edf\u7528\u6237\u6743\u9650\u3002\u76ee\u5f55\u767d\u540d\u5355\u4e0d\u7b49\u4e8e\u7ec8\u7aef\u6c99\u7bb1\u3002',recentTitle:'\u6700\u8fd1\u6d3b\u52a8',requestsTitle:'\u6838\u5bf9\u5373\u5c06\u6267\u884c\u7684\u64cd\u4f5c',requestHint:'\u6279\u51c6\u540e\u4ec5\u6267\u884c\u4e00\u6b21\uff0c\u7ed3\u679c\u53ef\u7531 ChatGPT \u67e5\u8be2\u3002\u8bf7\u62d2\u7edd\u975e\u4f60\u53d1\u8d77\u7684\u64cd\u4f5c\u3002',pairTitle:'\u5f85\u6279\u51c6\u7684\u8fde\u63a5',pairHint:'\u53ea\u6279\u51c6\u4e0e\u4f60\u521a\u6253\u5f00\u7684\u6388\u6743\u9875\u9762\u4e00\u81f4\u7684\u9a8c\u8bc1\u7801\u3002',revokeTitle:'\u65ad\u5f00\u6240\u6709\u5ba2\u6237\u7aef',revokeHint:'\u64a4\u9500\u6240\u6709\u8bbf\u95ee\u4e0e\u5237\u65b0\u4ee4\u724c\uff0c\u53d6\u6d88\u5f85\u5ba1\u6279\u64cd\u4f5c\u5e76\u505c\u6b62\u672c\u670d\u52a1\u521b\u5efa\u7684\u7ec8\u7aef\u3002',revoke:'\u64a4\u9500\u5168\u90e8\u6388\u6743',resetClients:'\u6e05\u7a7a OAuth \u5ba2\u6237\u7aef\u6ce8\u518c',sessionsTitle:'\u53d7\u7ba1\u7406\u7684\u7ec8\u7aef\u4f1a\u8bdd',sessionsHint:'\u4ec5\u663e\u793a RDC-X \u521b\u5efa\u7684\u8fdb\u7a0b\uff0c\u4e0d\u63d0\u4f9b\u7ec8\u6b62\u4efb\u610f\u7cfb\u7edf\u8fdb\u7a0b\u7684\u63a5\u53e3\u3002',auditTitle:'\u672c\u5730\u5ba1\u8ba1\u8bb0\u5f55',auditHint:'\u4e0d\u8bb0\u5f55\u4ee4\u724c\u3001\u6587\u4ef6\u6b63\u6587\u6216\u6807\u51c6\u8f93\u5165\u6b63\u6587\u3002\u663e\u793a\u6700\u65b0 200 \u6761\u3002',settingsTitle:'\u8bbf\u95ee\u7b56\u7565',deviceName:'\u8bbe\u5907\u540d\u79f0',publicUrl:'\u516c\u7f51 HTTPS \u6e90\u5730\u5740',urlHint:'\u4e0d\u8981\u52a0 /mcp\u3002\u4fee\u6539\u540e\u65e7\u6388\u6743\u5c06\u5931\u6548\u3002',rootsInput:'\u6388\u6743\u76ee\u5f55\uff1a\u6bcf\u884c rw | \u8def\u5f84\uff08\u8bfb\u5199\uff09\u6216 ro | \u8def\u5f84\uff08\u53ea\u8bfb\uff09',rootsHint:'\u53ea\u5141\u8bb8\u5df2\u5b58\u5728\u7684\u76ee\u5f55\u3002\u7a7a\u5217\u8868\u8868\u793a\u7981\u6b62\u5168\u90e8\u6587\u4ef6\u8bbf\u95ee\u3002',requireWrite:'\u6bcf\u6b21\u6587\u4ef6\u4fee\u6539\u9700\u8981\u672c\u673a\u6279\u51c6',enableTerminal:'\u5141\u8bb8\u7ec8\u7aef\u547d\u4ee4\uff08\u6bcf\u6b21\u547d\u4ee4\u548c\u8f93\u5165\u4ecd\u9700\u5355\u72ec\u6279\u51c6\uff09',terminalWarning:'\u7ec8\u7aef\u4e0d\u662f\u64cd\u4f5c\u7cfb\u7edf\u6c99\u7bb1\u3002\u6279\u51c6\u7684\u547d\u4ee4\u80fd\u4ee5\u5f53\u524d\u7528\u6237\u6743\u9650\u8bbf\u95ee\u767d\u540d\u5355\u5916\u7684\u6587\u4ef6\u4e0e\u7f51\u7edc\u3002\u4e0d\u9700\u8981\u65f6\u8bf7\u5173\u95ed\uff1b\u9700\u8981\u5f3a\u9694\u79bb\u65f6\u8bf7\u4f7f\u7528\u72ec\u7acb\u7cfb\u7edf\u8d26\u53f7\u6216\u865a\u62df\u673a\u3002',oauthHosts:'OAuth \u56de\u8c03\u5141\u8bb8\u7684\u57df\u540d',save:'\u4fdd\u5b58\u8bbf\u95ee\u7b56\u7565',empty:'\u6682\u65e0\u8bb0\u5f55',approve:'\u6279\u51c6\u5e76\u6267\u884c',reject:'\u62d2\u7edd',pairApprove:'\u9a8c\u8bc1\u7801\u4e00\u81f4\uff0c\u5141\u8bb8\u8fde\u63a5',details:'\u67e5\u770b\u5b8c\u6574\u53c2\u6570',result:'\u6267\u884c\u7ed3\u679c',online:'\u8fd0\u884c\u4e2d',paused:'\u5df2\u6682\u505c',required:'\u9700\u8981\u672c\u673a\u6279\u51c6',auto:'\u767d\u540d\u5355\u5185\u5141\u8bb8',disabled:'\u5df2\u5173\u95ed',saved:'\u5df2\u4fdd\u5b58',stop:'\u505c\u6b62\u8fdb\u7a0b',confirm:'\u786e\u5b9a\u6267\u884c\u6b64\u64cd\u4f5c\uff1f',remoteNeeded:'\u5f53\u524d\u4ec5\u672c\u673a\u53ef\u7528\u3002\u8fd0\u884c Start-Tunnel.cmd \u6216\u914d\u7f6e\u4f60\u7684 HTTPS \u53cd\u5411\u4ee3\u7406\u540e\uff0c\u624d\u80fd\u4ece ChatGPT \u8fde\u63a5\u3002',remoteReady:'\u5df2\u914d\u7f6e HTTPS \u5730\u5740\uff1b\u8bf7\u786e\u4fdd\u96a7\u9053\u6b63\u5728\u8fd0\u884c\u3002\u4e0d\u8981\u8f6c\u53d1\u7ba1\u7406\u7aef\u53e3\u3002'
-};
+
 const $ = id => document.getElementById(id);
-for (const node of document.querySelectorAll('[data-i18n]')) node.textContent = text[node.dataset.i18n] || node.textContent;
-let key = new URLSearchParams(location.hash.slice(1)).get('key') || sessionStorage.getItem('rdcx-key') || '';
+const hash = new URLSearchParams(location.hash.slice(1));
+let key = hash.get('key') || sessionStorage.getItem('rdcx-key') || '';
+const initialView = hash.get('view') || 'overview';
 history.replaceState(null, '', location.pathname);
-let snapshot; let busy = false; let loadedSettings = false; let lastLists = '';
-function toast(message, error=false) { const node=$('toast'); node.textContent=message; node.className=error?'error':''; node.hidden=false; clearTimeout(toast.timer); toast.timer=setTimeout(()=>node.hidden=true,5000); }
+
+let snapshot;
+let busy = false;
+let loadedSettings = false;
+let loadedTunnelSettings = false;
+let lastLists = '';
+
+const viewNames = {
+  overview: '总览',
+  requests: '操作审批',
+  connections: '连接授权',
+  sessions: '终端会话',
+  audit: '审计日志',
+  settings: '访问策略'
+};
+
+function toast(message, error = false) {
+  const target = $('toast');
+  target.textContent = message;
+  target.className = error ? 'error' : '';
+  target.hidden = false;
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => { target.hidden = true; }, 5000);
+}
+
 async function api(url, body) {
-  const response=await fetch('/api'+url,{method:body===undefined?'GET':'POST',headers:{'X-RDC-Admin':key,...(body===undefined?{}:{'Content-Type':'application/json'})},body:body===undefined?undefined:JSON.stringify(body)});
-  const result=await response.json(); if(!response.ok) throw new Error(result.error||'Request failed'); return result;
+  const response = await fetch('/api' + url, {
+    method: body === undefined ? 'GET' : 'POST',
+    headers: {
+      'X-RDC-Admin': key,
+      ...(body === undefined ? {} : { 'Content-Type': 'application/json' })
+    },
+    body: body === undefined ? undefined : JSON.stringify(body)
+  });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error || 'Request failed');
+  return result;
 }
-function node(tag, content, className) { const element=document.createElement(tag); if(content!==undefined) element.textContent=content; if(className)element.className=className; return element; }
-function empty(target) { target.replaceChildren(node('div',text.empty,'empty')); }
-function action(label, fn, className) { const button=node('button',label,className); button.addEventListener('click',async()=>{button.disabled=true;try{await fn();await refresh();}catch(e){toast(e.message,true);}finally{button.disabled=false;}}); return button; }
-function auditRows(target, items) { target.replaceChildren(); if(!items.length)return empty(target); for(const item of items){const row=node('div',undefined,'audit-row');row.append(node('time',new Date(item.time).toLocaleTimeString()),node('code',item.action),node('span',item.outcome,'outcome '+(item.outcome==='failed'?'failed':'')));if(item.detail)row.title=JSON.stringify(item.detail);target.append(row);} }
-function showView(view) { document.querySelectorAll('.view').forEach(e=>e.classList.toggle('active',e.id==='view-'+view));document.querySelectorAll('.nav').forEach(e=>e.classList.toggle('active',e.dataset.view===view));$('breadcrumb').textContent=text[view]; }
-document.querySelectorAll('[data-view]').forEach(button=>button.addEventListener('click',()=>showView(button.dataset.view)));
-function renderLists(data) {
-  const signature=JSON.stringify([data.approvals,data.pairings,data.authorizations,data.sessions,data.audit]); if(signature===lastLists)return;lastLists=signature;
-  const target=$('approvalList');target.replaceChildren();if(!data.approvals.length)empty(target);
-  for(const item of data.approvals){const box=node('article',undefined,'request');const head=node('div',undefined,'request-head');head.append(node('strong',item.action),node('span',item.status,'badge'));box.append(head,node('p',new Date(item.createdAt).toLocaleString(),'muted'));
-    const details=node('details');details.open=item.status==='pending';details.append(node('summary',text.details),node('pre',JSON.stringify(item.preview,null,2)));box.append(details);
-    if(item.status==='pending'){const actions=node('div',undefined,'actions');actions.append(action(text.approve,async()=>{if((item.action.includes('process')||item.action==='force_terminate')&&!confirm(text.terminalWarning+'\n\n'+text.confirm))return;await api('/approvals/'+item.id,{approve:true});}),action(text.reject,()=>api('/approvals/'+item.id,{approve:false}),'reject'));box.append(actions);}
-    if(item.result!==undefined||item.error){const result=node('details');result.append(node('summary',text.result),node('pre',item.error||JSON.stringify(item.result,null,2)));box.append(result);}target.append(box);
+
+function node(tag, content, className) {
+  const element = document.createElement(tag);
+  if (content !== undefined) element.textContent = content;
+  if (className) element.className = className;
+  return element;
+}
+
+function empty(target) {
+  target.replaceChildren(node('div', '暂无记录', 'empty'));
+}
+
+function action(label, fn, className) {
+  const button = node('button', label, className);
+  button.addEventListener('click', async () => {
+    button.disabled = true;
+    try {
+      await fn();
+      await refresh();
+    } catch (error) {
+      toast(error.message, true);
+    } finally {
+      button.disabled = false;
+    }
+  });
+  return button;
+}
+
+function auditRows(target, items) {
+  target.replaceChildren();
+  if (!items.length) return empty(target);
+  for (const item of items) {
+    const row = node('div', undefined, 'audit-row');
+    row.append(
+      node('time', new Date(item.time).toLocaleTimeString()),
+      node('code', item.action),
+      node('span', item.outcome, 'outcome ' + (item.outcome === 'failed' ? 'failed' : ''))
+    );
+    if (item.detail) row.title = JSON.stringify(item.detail);
+    target.append(row);
   }
-  const pairs=$('pairList');pairs.replaceChildren();if(!data.pairings.length)empty(pairs);for(const item of data.pairings){const box=node('article',undefined,'request');box.append(node('strong',item.name),node('div',item.pin,'pin'),node('p',item.redirect),node('p',item.scopes.join(' / ')));const actions=node('div',undefined,'actions');actions.append(action(text.pairApprove,()=>api('/pairings/'+item.id,{approve:true})),action(text.reject,()=>api('/pairings/'+item.id,{approve:false}),'reject'));box.append(actions);pairs.append(box);}
-  const auths=$('authorizationList');auths.replaceChildren();if(!data.authorizations?.length)empty(auths);for(const item of (data.authorizations||[])){const box=node('article',undefined,'request');const trusted=item.approvalMode==='trusted';box.append(node('strong',item.clientName),node('p',item.scopes.join(' / '),'muted'),node('p',trusted?'本次授权会话：免审批':'本次授权会话：逐次审批',trusted?'badge':'muted'));const actions=node('div',undefined,'actions');if(trusted)actions.append(action('恢复逐次审批',()=>api('/authorizations/'+item.grantId+'/approval-mode',{mode:'default'})));else actions.append(action('本次会话完全无需审批',async()=>{if(!confirm('开启后，此授权会话的文件修改、终端、系统进程、桌面和 Unity 操作可直接执行，直到服务重启或撤销授权。\n\n确定继续？'))return;await api('/authorizations/'+item.grantId+'/approval-mode',{mode:'trusted'});},'danger-outline'));box.append(actions);auths.append(box);}
-  const sessions=$('sessionList');sessions.replaceChildren();if(!data.sessions.length)empty(sessions);for(const item of data.sessions){const box=node('article',undefined,'request');box.append(node('strong',`PID ${item.pid||'-'} / ${item.state}`),node('pre',item.command),node('p',item.cwd));if(item.state==='running')box.append(action(text.stop,()=>api('/sessions/'+item.id+'/stop',{}),'reject'));sessions.append(box);}
-  auditRows($('recentAudit'),data.audit.slice(0,5));auditRows($('auditList'),data.audit);
 }
-function populateSettings(c) { $('name').value=c.name;$('publicUrl').value=c.publicUrl;$('rootsInput').value=c.roots.map(r=>(r.write?'rw':'ro')+' | '+r.path).join('\n');$('writeApproval').checked=c.requireWriteApproval;$('terminalEnabled').checked=c.terminalEnabled;$('systemProcessEnabled').checked=!!c.systemProcessControlEnabled;$('desktopEnabled').checked=!!c.desktopControlEnabled;$('networkFetchEnabled').checked=!!c.networkFetchEnabled;$('secureTunnelEnabled').checked=!!c.secureTunnelEnabled;$('oauthHosts').value=c.oauthRedirectHosts.join(', ');loadedSettings=true; }
-async function refresh() { if(!key||busy)return;busy=true;try{snapshot=await api('/state');sessionStorage.setItem('rdcx-key',key);$('lock').hidden=true;$('shell').hidden=false;const c=snapshot.config;$('device').textContent=c.name+' / '+c.deviceId;$('serviceStatus').textContent=c.paused?text.paused:text.online;$('uptime').textContent='Uptime '+Math.floor(c.uptimeSeconds/60)+' min';$('pendingCount').textContent=snapshot.approvals.filter(a=>a.status==='pending').length+snapshot.pairings.length;$('rootCount').textContent=c.roots.length;$('linkedCount').textContent=snapshot.authorizationCount;$('endpoint').textContent=snapshot.endpoint;$('remoteWarning').textContent=snapshot.hasPublicUrl?text.remoteReady:text.remoteNeeded;$('remoteWarning').className='notice'+(snapshot.hasPublicUrl?'':' warning');$('writePolicy').textContent=c.requireWriteApproval?text.required:text.auto;$('terminalPolicy').textContent=c.terminalEnabled?text.required:text.disabled;$('pause').textContent=c.paused?text.resume:text.pause;if(snapshot.secureTunnel){$('secureTunnelEndpoint').textContent=snapshot.secureTunnel.endpoint;$('secureTunnelStatus').textContent=snapshot.secureTunnel.enabled?'已启用':'已关闭';const trusted=snapshot.secureTunnel.approvalMode==='trusted';$('secureTunnelApproval').textContent=trusted?'本次会话免审批':'逐次审批';$('secureTunnelTrust').hidden=trusted;$('secureTunnelRestore').hidden=!trusted;}if(!loadedSettings)populateSettings(c);renderLists(snapshot);}catch(e){toast(e.message,true);}finally{busy=false;} }
-$('unlock').addEventListener('submit',e=>{e.preventDefault();key=$('key').value.trim();void refresh();});
-$('logout').addEventListener('click',()=>{key='';sessionStorage.removeItem('rdcx-key');$('shell').hidden=true;$('lock').hidden=false;$('key').value='';});
-$('pause').addEventListener('click',async()=>{try{await api('/pause',{paused:!snapshot.config.paused});await refresh();}catch(e){toast(e.message,true);}});
-$('copyEndpoint').addEventListener('click',()=>navigator.clipboard.writeText(snapshot.endpoint).then(()=>toast('Copied')).catch(e=>toast(e.message,true)));
-for(const [id,url] of [['revoke','/revoke'],['resetClients','/clients/reset']])$(id).addEventListener('click',async()=>{if(!confirm(text.revokeHint+'\n'+text.confirm))return;try{await api(url,{});await refresh();}catch(e){toast(e.message,true);}});$('secureTunnelTrust').addEventListener('click',async()=>{if(!confirm('开启后，Secure MCP Tunnel 连接的文件修改、终端、系统进程、桌面和 Unity 操作可直接执行，直到服务重启、暂停访问或恢复逐次审批。\n\n确定继续？'))return;try{await api('/tunnel/approval-mode',{mode:'trusted'});await refresh();}catch(e){toast(e.message,true);}});$('secureTunnelRestore').addEventListener('click',async()=>{try{await api('/tunnel/approval-mode',{mode:'default'});await refresh();}catch(e){toast(e.message,true);}});
-$('settingsForm').addEventListener('submit',async e=>{e.preventDefault();try{const roots=$('rootsInput').value.split('\n').filter(s=>s.trim()).map(line=>{const match=/^(rw|ro)\s*\|\s*(.+)$/i.exec(line.trim());if(!match)throw new Error('Use: rw | F:\\Project or ro | F:\\Reference');return{path:match[2].trim(),write:match[1].toLowerCase()==='rw'};});if($('terminalEnabled').checked&&!snapshot.config.terminalEnabled&&!confirm(text.terminalWarning+'\n'+text.confirm))return;if((($('systemProcessEnabled').checked&&!snapshot.config.systemProcessControlEnabled)||($('desktopEnabled').checked&&!snapshot.config.desktopControlEnabled))&&!confirm('你正在开启高权限系统/桌面控制。若某授权会话同时设为免审批，ChatGPT 可直接执行这些操作。\n\n确定继续？'))return;await api('/config',{name:$('name').value.trim(),publicUrl:$('publicUrl').value.trim(),roots,requireWriteApproval:$('writeApproval').checked,terminalEnabled:$('terminalEnabled').checked,systemProcessControlEnabled:$('systemProcessEnabled').checked,desktopControlEnabled:$('desktopEnabled').checked,networkFetchEnabled:$('networkFetchEnabled').checked,secureTunnelEnabled:$('secureTunnelEnabled').checked,oauthRedirectHosts:$('oauthHosts').value.split(',').map(s=>s.trim()).filter(Boolean)});$('saveStatus').textContent=text.saved;loadedSettings=false;await refresh();toast(text.saved);}catch(e){toast(e.message,true);}});
-if(key)void refresh();setInterval(()=>{if(!document.hidden)void refresh();},2500);
+
+function showView(view) {
+  if (!viewNames[view]) view = 'overview';
+  document.querySelectorAll('.view').forEach(element => element.classList.toggle('active', element.id === 'view-' + view));
+  document.querySelectorAll('.nav').forEach(element => element.classList.toggle('active', element.dataset.view === view));
+  $('breadcrumb').textContent = viewNames[view];
+}
+
+document.querySelectorAll('[data-view]').forEach(button => {
+  button.addEventListener('click', () => showView(button.dataset.view));
+});
+
+function renderLists(data) {
+  const signature = JSON.stringify([data.approvals, data.pairings, data.authorizations, data.sessions, data.audit]);
+  if (signature === lastLists) return;
+  lastLists = signature;
+
+  const approvals = $('approvalList');
+  approvals.replaceChildren();
+  if (!data.approvals.length) empty(approvals);
+  for (const item of data.approvals) {
+    const box = node('article', undefined, 'request');
+    const head = node('div', undefined, 'request-head');
+    head.append(node('strong', item.action), node('span', item.status, 'badge'));
+    box.append(head, node('p', new Date(item.createdAt).toLocaleString(), 'muted'));
+
+    const details = node('details');
+    details.open = item.status === 'pending';
+    details.append(node('summary', '查看完整参数'), node('pre', JSON.stringify(item.preview, null, 2)));
+    box.append(details);
+
+    if (item.status === 'pending') {
+      const actions = node('div', undefined, 'actions');
+      actions.append(
+        action('批准并执行', async () => {
+          if ((item.action.includes('process') || item.action === 'force_terminate') &&
+              !confirm('终端命令拥有当前 Windows 用户权限。\n\n确定执行此操作？')) return;
+          await api('/approvals/' + item.id, { approve: true });
+        }),
+        action('拒绝', () => api('/approvals/' + item.id, { approve: false }), 'reject')
+      );
+      box.append(actions);
+    }
+
+    if (item.result !== undefined || item.error) {
+      const result = node('details');
+      result.append(node('summary', '执行结果'), node('pre', item.error || JSON.stringify(item.result, null, 2)));
+      box.append(result);
+    }
+    approvals.append(box);
+  }
+
+  const pairs = $('pairList');
+  pairs.replaceChildren();
+  if (!data.pairings.length) empty(pairs);
+  for (const item of data.pairings) {
+    const box = node('article', undefined, 'request');
+    box.append(
+      node('strong', item.name),
+      node('div', item.pin, 'pin'),
+      node('p', item.redirect),
+      node('p', item.scopes.join(' / '))
+    );
+    const actions = node('div', undefined, 'actions');
+    actions.append(
+      action('验证码一致，允许连接', () => api('/pairings/' + item.id, { approve: true })),
+      action('拒绝', () => api('/pairings/' + item.id, { approve: false }), 'reject')
+    );
+    box.append(actions);
+    pairs.append(box);
+  }
+
+  const auths = $('authorizationList');
+  auths.replaceChildren();
+  if (!data.authorizations?.length) empty(auths);
+  for (const item of data.authorizations || []) {
+    const box = node('article', undefined, 'request');
+    const trusted = item.approvalMode === 'trusted';
+    box.append(
+      node('strong', item.clientName),
+      node('p', item.scopes.join(' / '), 'muted'),
+      node('p', trusted ? '本次授权会话：免审批' : '本次授权会话：逐次审批', trusted ? 'badge' : 'muted')
+    );
+    const actions = node('div', undefined, 'actions');
+    if (trusted) {
+      actions.append(action('恢复逐次审批', () => api('/authorizations/' + item.grantId + '/approval-mode', { mode: 'default' })));
+    } else {
+      actions.append(action('本次会话完全无需审批', async () => {
+        if (!confirm('开启后，此 OAuth 会话的文件修改、终端、系统进程、桌面和 Unity 操作可直接执行，直到服务重启或撤销授权。\n\n确定继续？')) return;
+        await api('/authorizations/' + item.grantId + '/approval-mode', { mode: 'trusted' });
+      }, 'danger-outline'));
+    }
+    box.append(actions);
+    auths.append(box);
+  }
+
+  const sessions = $('sessionList');
+  sessions.replaceChildren();
+  if (!data.sessions.length) empty(sessions);
+  for (const item of data.sessions) {
+    const box = node('article', undefined, 'request');
+    box.append(node('strong', `PID ${item.pid || '-'} / ${item.state}`), node('pre', item.command), node('p', item.cwd));
+    if (item.state === 'running') box.append(action('停止进程', () => api('/sessions/' + item.id + '/stop', {}), 'reject'));
+    sessions.append(box);
+  }
+
+  auditRows($('recentAudit'), data.audit.slice(0, 5));
+  auditRows($('auditList'), data.audit);
+}
+
+function populateSettings(config) {
+  $('name').value = config.name;
+  $('publicUrl').value = config.publicUrl;
+  $('rootsInput').value = config.roots.map(root => (root.write ? 'rw' : 'ro') + ' | ' + root.path).join('\n');
+  $('writeApproval').checked = config.requireWriteApproval;
+  $('terminalEnabled').checked = config.terminalEnabled;
+  $('systemProcessEnabled').checked = !!config.systemProcessControlEnabled;
+  $('desktopEnabled').checked = !!config.desktopControlEnabled;
+  $('networkFetchEnabled').checked = !!config.networkFetchEnabled;
+  $('oauthHosts').value = config.oauthRedirectHosts.join(', ');
+  loadedSettings = true;
+}
+
+function renderTunnel(tunnel) {
+  $('secureTunnelEndpoint').textContent = tunnel.endpoint || '--';
+  const status = tunnel.ready ? 'Ready / 可用' : tunnel.live ? 'Live / 尚未 Ready' : tunnel.processRunning ? '正在启动' : '已停止';
+  $('secureTunnelStatus').textContent = status;
+  $('overviewTunnelStatus').textContent = status;
+  $('overviewTunnelId').textContent = tunnel.tunnelId || '未配置';
+  $('secureTunnelKeyStatus').textContent = tunnel.hasApiKey ? '已用 Windows DPAPI 加密保存' : '未保存';
+
+  const trusted = tunnel.approvalMode === 'trusted';
+  $('secureTunnelApproval').textContent = trusted ? '本次会话免审批' : '逐次审批';
+  $('secureTunnelTrust').hidden = trusted;
+  $('secureTunnelRestore').hidden = !trusted;
+
+  $('tunnelKeyHint').textContent = tunnel.hasApiKey
+    ? '已用当前 Windows 用户的 DPAPI 加密保存。留空会继续使用已保存密钥。'
+    : '首次配置必须输入。保存后不再从服务端返回明文。';
+
+  $('openTunnelUi').disabled = !tunnel.live;
+  $('overviewTunnelHint').textContent = tunnel.ready
+    ? 'Secure MCP Tunnel 已就绪。只要 ChatGPT 工作区中的 RDC-X App 已发布，就可以直接使用。'
+    : tunnel.configured
+      ? '配置已保存；如果没有自动 Ready，请查看下方错误或启动 Tunnel。'
+      : '首次使用请进入“连接授权”，填写 Tunnel ID 与 Runtime API Key。';
+
+  const error = $('secureTunnelError');
+  if (tunnel.lastError) {
+    error.textContent = tunnel.lastError;
+    error.hidden = false;
+  } else {
+    error.textContent = '';
+    error.hidden = true;
+  }
+
+  if (!loadedTunnelSettings) {
+    $('tunnelId').value = tunnel.tunnelId || '';
+    $('tunnelApiKey').value = '';
+    loadedTunnelSettings = true;
+  }
+}
+
+async function refresh() {
+  if (!key || busy) return;
+  busy = true;
+  try {
+    snapshot = await api('/state');
+    sessionStorage.setItem('rdcx-key', key);
+    $('lock').hidden = true;
+    $('shell').hidden = false;
+
+    const config = snapshot.config;
+    $('device').textContent = config.name + ' / ' + config.deviceId;
+    $('serviceStatus').textContent = config.paused ? '已暂停' : '运行中';
+    $('uptime').textContent = 'Uptime ' + Math.floor(config.uptimeSeconds / 60) + ' min';
+    $('pendingCount').textContent = snapshot.approvals.filter(item => item.status === 'pending').length + snapshot.pairings.length;
+    $('rootCount').textContent = config.roots.length;
+    $('linkedCount').textContent = snapshot.authorizationCount + (snapshot.secureTunnel?.configured ? 1 : 0);
+    $('writePolicy').textContent = config.requireWriteApproval ? '需要本机审批' : '白名单内允许';
+    $('terminalPolicy').textContent = config.terminalEnabled ? '已启用 / 受审批策略控制' : '已关闭';
+    $('pause').textContent = config.paused ? '恢复远程访问' : '暂停远程访问';
+
+    renderTunnel(snapshot.secureTunnel);
+    if (!loadedSettings) populateSettings(config);
+    renderLists(snapshot);
+  } catch (error) {
+    toast(error.message, true);
+  } finally {
+    busy = false;
+  }
+}
+
+$('unlock').addEventListener('submit', event => {
+  event.preventDefault();
+  key = $('key').value.trim();
+  showView(initialView);
+  void refresh();
+});
+
+$('logout').addEventListener('click', () => {
+  key = '';
+  sessionStorage.removeItem('rdcx-key');
+  $('shell').hidden = true;
+  $('lock').hidden = false;
+  $('key').value = '';
+});
+
+$('pause').addEventListener('click', async () => {
+  try {
+    await api('/pause', { paused: !snapshot.config.paused });
+    await refresh();
+  } catch (error) {
+    toast(error.message, true);
+  }
+});
+
+$('tunnelForm').addEventListener('submit', async event => {
+  event.preventDefault();
+  const submit = $('tunnelSaveStart');
+  submit.disabled = true;
+  try {
+    const runtimeApiKey = $('tunnelApiKey').value.trim();
+    const body = { tunnelId: $('tunnelId').value.trim() };
+    if (runtimeApiKey) body.runtimeApiKey = runtimeApiKey;
+    await api('/tunnel/configure', body);
+    $('tunnelApiKey').value = '';
+    loadedTunnelSettings = false;
+    await refresh();
+    toast('Secure MCP Tunnel 配置已保存并启动。');
+  } catch (error) {
+    toast(error.message, true);
+  } finally {
+    submit.disabled = false;
+  }
+});
+
+$('tunnelStart').addEventListener('click', async () => {
+  try {
+    await api('/tunnel/start', {});
+    await refresh();
+    toast('已请求启动 Secure MCP Tunnel。');
+  } catch (error) {
+    toast(error.message, true);
+  }
+});
+
+$('tunnelStop').addEventListener('click', async () => {
+  try {
+    await api('/tunnel/stop', {});
+    await refresh();
+    toast('Secure MCP Tunnel 已停止。');
+  } catch (error) {
+    toast(error.message, true);
+  }
+});
+
+$('openTunnelUi').addEventListener('click', () => {
+  if (snapshot?.secureTunnel?.uiUrl) window.open(snapshot.secureTunnel.uiUrl, '_blank', 'noopener');
+});
+
+$('forgetTunnelKey').addEventListener('click', async () => {
+  if (!confirm('这会停止 Secure MCP Tunnel，并删除本机 DPAPI 加密的 Runtime API Key。Tunnel ID 会保留。\n\n确定继续？')) return;
+  try {
+    await api('/tunnel/forget-key', {});
+    $('tunnelApiKey').value = '';
+    loadedTunnelSettings = false;
+    await refresh();
+    toast('已删除保存的 Runtime API Key。');
+  } catch (error) {
+    toast(error.message, true);
+  }
+});
+
+$('secureTunnelTrust').addEventListener('click', async () => {
+  if (!confirm('开启后，Secure MCP Tunnel 的文件修改、终端、系统进程、桌面和 Unity 操作可直接执行，直到服务重启、暂停访问或恢复逐次审批。\n\n确定继续？')) return;
+  try {
+    await api('/tunnel/approval-mode', { mode: 'trusted' });
+    await refresh();
+  } catch (error) {
+    toast(error.message, true);
+  }
+});
+
+$('secureTunnelRestore').addEventListener('click', async () => {
+  try {
+    await api('/tunnel/approval-mode', { mode: 'default' });
+    await refresh();
+  } catch (error) {
+    toast(error.message, true);
+  }
+});
+
+for (const [id, url] of [['revoke', '/revoke'], ['resetClients', '/clients/reset']]) {
+  $(id).addEventListener('click', async () => {
+    if (!confirm('确定执行此操作？')) return;
+    try {
+      await api(url, {});
+      await refresh();
+    } catch (error) {
+      toast(error.message, true);
+    }
+  });
+}
+
+$('shutdownService').addEventListener('click', async () => {
+  if (!confirm('停止 RDC-X 与由它管理的 Secure MCP Tunnel？\n\n之后双击 Start-All.cmd 即可重新启动。')) return;
+  try {
+    await api('/shutdown', {});
+    toast('RDC-X 正在停止。再次使用时双击 Start-All.cmd。');
+  } catch (error) {
+    toast(error.message, true);
+  }
+});
+
+$('settingsForm').addEventListener('submit', async event => {
+  event.preventDefault();
+  try {
+    const roots = $('rootsInput').value.split('\n').filter(value => value.trim()).map(line => {
+      const match = /^(rw|ro)\s*\|\s*(.+)$/i.exec(line.trim());
+      if (!match) throw new Error('目录格式应为：rw | F:\\Project 或 ro | F:\\Reference');
+      return { path: match[2].trim(), write: match[1].toLowerCase() === 'rw' };
+    });
+
+    if ($('terminalEnabled').checked && !snapshot.config.terminalEnabled &&
+        !confirm('终端不是操作系统沙箱，命令拥有当前 Windows 用户权限。\n\n确定启用？')) return;
+
+    if ((($('systemProcessEnabled').checked && !snapshot.config.systemProcessControlEnabled) ||
+         ($('desktopEnabled').checked && !snapshot.config.desktopControlEnabled)) &&
+        !confirm('你正在开启高权限系统/桌面控制。若 Tunnel 同时设为免审批，ChatGPT 可以直接执行这些操作。\n\n确定继续？')) return;
+
+    await api('/config', {
+      name: $('name').value.trim(),
+      publicUrl: $('publicUrl').value.trim(),
+      roots,
+      requireWriteApproval: $('writeApproval').checked,
+      terminalEnabled: $('terminalEnabled').checked,
+      systemProcessControlEnabled: $('systemProcessEnabled').checked,
+      desktopControlEnabled: $('desktopEnabled').checked,
+      networkFetchEnabled: $('networkFetchEnabled').checked,
+      oauthRedirectHosts: $('oauthHosts').value.split(',').map(value => value.trim()).filter(Boolean)
+    });
+
+    $('saveStatus').textContent = '已保存';
+    loadedSettings = false;
+    await refresh();
+    toast('访问策略已保存。');
+  } catch (error) {
+    toast(error.message, true);
+  }
+});
+
+showView(initialView);
+if (key) void refresh();
+setInterval(() => {
+  if (!document.hidden) void refresh();
+}, 2500);
