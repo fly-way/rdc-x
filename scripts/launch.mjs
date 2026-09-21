@@ -69,6 +69,6 @@ if (!running) {
   }
   process.exitCode = 1;
 } else {
-  console.log('RDC-X is running locally. Use Stop.cmd to stop it.');
+  console.log('RDC-X is running locally. Start-All.cmd also manages the Secure MCP Tunnel from the local dashboard.');
   await import('./dashboard.mjs');
 }
