@@ -103,14 +103,14 @@ export class TunnelRuntime {
     const settings = this.settings();
     let live = false;
     let ready = false;
-    try {
-      const health = await fetch(`http://127.0.0.1:${HEALTH_PORT}/healthz`, { signal: AbortSignal.timeout(700) });
-      live = health.ok;
-    } catch {}
-    try {
-      const response = await fetch(`http://127.0.0.1:${HEALTH_PORT}/readyz`, { signal: AbortSignal.timeout(700) });
-      ready = response.ok;
-    } catch {}
+    if (settings || this.child) {
+      const [health, readiness] = await Promise.all([
+        fetch(`http://127.0.0.1:${HEALTH_PORT}/healthz`, { signal: AbortSignal.timeout(350) }).catch(() => undefined),
+        fetch(`http://127.0.0.1:${HEALTH_PORT}/readyz`, { signal: AbortSignal.timeout(350) }).catch(() => undefined)
+      ]);
+      live = !!health?.ok;
+      ready = !!readiness?.ok;
+    }
     return {
       configured: !!settings && fs.existsSync(this.secretPath),
       tunnelId: settings?.tunnelId ?? '',
