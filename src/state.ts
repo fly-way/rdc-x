@@ -65,8 +65,12 @@ export class State {
     const ports = new Set([c.mcpPort, c.adminPort, c.tunnelPort]);
     if (ports.size !== 3) throw new Error('MCP, admin and Secure MCP Tunnel ports must all differ.');
     for (const root of c.roots) {
-      if (!path.isAbsolute(root.path) || !fs.statSync(root.path).isDirectory())
-        throw new Error('Each allowed root must be an existing absolute directory.');
+      if (!path.isAbsolute(root.path))
+        throw new Error('Each allowed root must be an absolute directory path.');
+      if (!fs.existsSync(root.path))
+        throw new Error(`Authorized root does not exist: ${root.path}`);
+      if (!fs.statSync(root.path).isDirectory())
+        throw new Error(`Authorized root is not a directory: ${root.path}`);
     }
     for (const host of c.oauthRedirectHosts) {
       if (!/^[a-zA-Z0-9.-]+$/.test(host)) throw new Error('OAuth hosts must be exact hostnames, not URLs or wildcards.');
