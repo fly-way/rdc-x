@@ -54,6 +54,21 @@ await test('HTTP, OAuth and real MCP SDK integration', async t => {
     assert.equal(await rawStatus(origin + '/health'), 403);
     assert.equal(await rawStatus(local + '/api/state'), 403);
   });
+  await t.test('Dashboard bootstrap starts locked and requires a fresh Runtime API Key', async () => {
+    const bootstrap = await fetch(local + '/api/bootstrap', { headers: { 'X-RDC-Admin': f.key } });
+    assert.equal(bootstrap.status, 200);
+    const state = await bootstrap.json();
+    assert.equal(state.dashboardUnlocked, false);
+    assert.equal(state.ready, false);
+
+    const missingKey = await post(local + '/api/bootstrap/connect', {
+      tunnelId: 'tunnel_0123456789abcdef0123456789abcdef',
+      runtimeApiKey: ''
+    }, f.key);
+    assert.equal(missingKey.status, 400);
+    assert.match(String((await missingKey.json()).error), /Runtime API Key is required/i);
+  });
+
   await t.test('unknown redirect hosts and plain PKCE are rejected', async () => {
     assert.equal((await post(origin + '/register', { redirect_uris: ['https://attacker.invalid/callback'] })).status, 400);
     assert.equal((await fetch(origin + '/authorize?response_type=code&code_challenge_method=plain')).status, 400);
