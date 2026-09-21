@@ -15,6 +15,14 @@ if (!fs.existsSync(configPath)) {
     oauthRedirectHosts: ['chatgpt.com', 'chat.openai.com'], allowLoopbackOAuth: false };
   fs.writeFileSync(configPath, JSON.stringify(config, null, 2), { mode: 0o600 });
 }
+if (fs.existsSync(configPath)) {
+  const existing = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  let changed = false;
+  for (const [key, value] of Object.entries({ tunnelPort: 47833, secureTunnelEnabled: false })) {
+    if (!(key in existing)) { existing[key] = value; changed = true; }
+  }
+  if (changed) fs.writeFileSync(configPath, JSON.stringify(existing, null, 2), { mode: 0o600 });
+}
 const token = path.join(data, 'admin-token.txt');
 if (!fs.existsSync(token)) fs.writeFileSync(token, crypto.randomBytes(32).toString('base64url'), { mode: 0o600 });
 if (process.platform === 'win32') {
