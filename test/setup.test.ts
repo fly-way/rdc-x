@@ -23,4 +23,14 @@ await test('setup protects private files without breaking access and preserves e
   const second = run(); assert.equal(second.status, 0, second.stderr);
   assert.equal(fs.readFileSync(configPath, 'utf8'), config);
   assert.equal(fs.readFileSync(keyPath, 'utf8'), key);
+
+  const movedConfig = JSON.parse(config);
+  const staleParent = path.join(path.dirname(base), path.basename(base).replace(/-/g, '_'));
+  movedConfig.roots = [{ path: path.join(staleParent, 'workspace'), write: true }];
+  fs.writeFileSync(configPath, JSON.stringify(movedConfig, null, 2));
+  const migrated = run(); assert.equal(migrated.status, 0, migrated.stderr);
+  const migratedConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  assert.equal(migratedConfig.roots[0].path, path.join(base, 'workspace'));
+  assert.match(migrated.stdout, /Migrating default workspace root:/);
+  assert.equal(fs.readFileSync(keyPath, 'utf8'), key);
 });
