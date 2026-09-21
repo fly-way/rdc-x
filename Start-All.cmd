@@ -32,7 +32,7 @@ if errorlevel 1 (
   goto :failed
 )
 
-echo [RDC-X] Starting RDC-X and opening the Secure Tunnel setup page...
+echo [RDC-X] Starting RDC-X and opening the Secure Tunnel sign-in page...
 node scripts\launch.mjs
 if errorlevel 1 goto :show_log
 exit /b 0
