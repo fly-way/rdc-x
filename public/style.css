@@ -228,6 +228,100 @@ code{font-family:"Cascadia Code",Consolas,monospace}
 #toast{position:fixed;right:25px;bottom:25px;z-index:1000;max-width:min(480px,calc(100vw - 40px));padding:12px 17px;border-radius:8px;background:#174f3f;color:#fff;box-shadow:0 10px 35px rgba(0,0,0,.18);font-size:11px}
 #toast.error{background:#8b3434}
 
+/* Readability, wide-layout and language controls */
+.floating-language{position:fixed;right:30px;top:24px;z-index:50;display:flex;align-items:center;gap:7px}
+.language-control,.top-language,.floating-language{color:var(--muted)}
+.language-select{appearance:none;border:0;background:transparent;color:inherit;font:600 12px/1.2 "Segoe UI","Microsoft YaHei",Arial,sans-serif;padding:4px 20px 4px 4px;cursor:pointer;background-image:linear-gradient(45deg,transparent 50%,#8a969f 50%),linear-gradient(135deg,#8a969f 50%,transparent 50%);background-position:calc(100% - 8px) 9px,calc(100% - 4px) 9px;background-size:4px 4px,4px 4px;background-repeat:no-repeat}
+.language-select:focus{outline:2px solid rgba(16,185,129,.2);border-radius:5px}
+.gate-language{font-size:12px}
+.top-language{display:flex;align-items:center;gap:4px;border-right:1px solid var(--line);padding-right:18px}
+
+.sidebar{width:252px}
+.sidebar-brand{height:82px;padding:0 27px}
+.sidebar-brand .brand strong{font-size:23px}
+.sidebar-brand>span{font-size:11px;margin-left:36px;margin-top:4px}
+.side-nav{padding:18px 15px;gap:5px}
+.nav-item{height:48px;padding:0 14px;gap:13px;font-size:14px}
+.nav-icon{width:21px;font-size:17px}
+.nav-item em{min-width:22px;height:22px;font-size:10px}
+.secondary-nav{margin:0 15px;width:calc(100% - 30px)}
+.sidebar-footer{height:60px;padding:0 20px;font-size:12px}
+
+.dashboard-main{margin-left:252px}
+.topbar{height:68px;padding:0 22px}
+.crumb{font-size:13px}.topbar strong{font-size:13px}
+.topbar-actions{gap:18px}
+.top-status{font-size:12px}
+.top-device{font-size:13px;padding-left:18px}
+.page-wrap{padding:22px 22px 42px;max-width:none;margin:0;width:100%}
+.info-banner{min-height:58px;padding:13px 17px;gap:13px;margin-bottom:18px}
+.info-banner>span{width:27px;height:27px}
+.info-banner b{font-size:14px}
+.info-banner small{font-size:12px}
+.connection-hero{min-height:148px;margin-bottom:24px;padding:27px 30px}
+.hero-label{font-size:11px}
+.hero-status-line strong{font-size:36px}
+.hero-status-line span{font-size:13px}
+.hero-copy small{font-size:12px}
+.hero-actions{gap:30px}
+.round-action{gap:8px}
+.round-action span{width:44px;height:44px;font-size:18px}
+.round-action b{font-size:11px}
+.page-title{font-size:28px;margin:6px 0 4px}
+.page-subtitle{font-size:13px;margin-bottom:18px}
+.overview-cards{gap:16px;margin-bottom:18px}
+.summary-card{min-height:142px;padding:21px 22px}
+.summary-label{font-size:14px}
+.summary-card strong{font-size:32px}
+.summary-card small{font-size:12px}
+.card-icon{width:54px;height:54px;font-size:24px}
+.dashboard-grid{grid-template-columns:minmax(0,2fr) minmax(340px,1fr);gap:18px}
+.panel{padding:23px;margin-bottom:18px}
+.panel-heading{margin-bottom:19px}
+.panel-heading h2{font-size:17px}
+.panel-heading p{font-size:12px}
+.policy-row{min-height:50px;font-size:13px}
+.page-heading{margin:7px 0 20px}
+.page-heading h1{font-size:28px;margin-bottom:4px}
+.page-heading p{font-size:13px}
+
+.empty{padding:42px 18px;font-size:13px}
+.request{padding:19px;margin:14px 0}
+.request-head strong{font-size:14px}
+.request p{font-size:12px}
+.request details{margin:12px 0}
+.request summary{font-size:12px}
+.request pre{font-size:12px;padding:14px}
+.badge,.pill{padding:5px 10px;font-size:11px}
+.audit-row{grid-template-columns:110px minmax(0,1fr) 110px;min-height:47px;font-size:12px}
+.audit-row time{font-size:11px}
+.tunnel-panel{padding:25px}
+.connection-details{gap:0 34px;margin-bottom:21px}
+.connection-details>div{min-height:67px}
+.connection-details span{font-size:11px}
+.connection-details code,.connection-details b{font-size:13px}
+.primary,.outline{font-size:13px;padding:10px 17px}
+.text-button,.link-button{font-size:12px}
+.advanced-panel>summary{padding:18px 22px;font-size:13px}
+.advanced-body{padding:21px 22px}
+.advanced-body>p{font-size:12px}
+.advanced-body h3{font-size:13px}
+.inline-alert{font-size:12px;padding:13px 15px}
+.settings-card form{max-width:none;width:100%}
+.form-grid{gap:20px}
+.field>span{font-size:13px}
+.field small{font-size:12px}
+.field input{height:46px}
+.field input,.field textarea{font-size:13px;padding:11px 13px}
+.toggle-grid{gap:12px;margin:20px 0}
+.toggle-card{min-height:80px;padding:15px}
+.toggle-card b{font-size:13px}
+.toggle-card small{font-size:11px}
+.save-status{font-size:12px}
+.danger-zone h2{font-size:15px}
+.danger-zone p{font-size:12px}
+#toast{font-size:13px;padding:14px 18px}
+
 /* Responsive */
 @media(max-width:1080px){
   .gate-shell{grid-template-columns:48% 52%}

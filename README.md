@@ -91,7 +91,7 @@ Port 47833 is loopback-only and must not be forwarded to the public internet.
 
 ## Dashboard
 
-The Dashboard uses a light business-console layout with:
+The Dashboard uses a light business-console layout with larger readable typography and a full-width content area on desktop. The UI supports **Simplified Chinese and English**; the language selector is available on the Secure Tunnel sign-in page and in the Dashboard header, and the preference is kept in the browser.\n\nThe Dashboard includes:
 
 - Secure Tunnel readiness and Tunnel ID;
 - pending approvals;

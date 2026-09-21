@@ -111,7 +111,7 @@ Start-All.cmd
 
 ## Dashboard
 
-Dashboard 已调整成浅色商务后台风格：
+Dashboard 已调整成浅色商务后台风格，并针对大屏提高了字号、减少左右空白，让内容尽量使用可用宽度。整个 Web UI 首批支持 **简体中文 / English**，Secure Tunnel 登录页和 Dashboard 顶部都可以切换语言，浏览器会记住语言偏好。\n\nDashboard 包括：
 
 - 左侧固定导航；
 - 顶部本机/Tunnel 状态；
