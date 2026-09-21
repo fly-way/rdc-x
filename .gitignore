@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.rdc/
+workspace/
+tools/
+*.log
+*.zip
+*.b64

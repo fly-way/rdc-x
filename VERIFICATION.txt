@@ -1,0 +1,249 @@
+RDC-X verification
+2026-09-21T14:04:20.951Z
+Node v24.15.0
+
+=== TypeScript build ===
+
+EXIT CODE: 0
+
+=== Automated tests ===
+TAP version 13
+# Subtest: expanded capabilities
+    # Subtest: session trust bypasses approvals only for that in-memory authorization
+    ok 1 - session trust bypasses approvals only for that in-memory authorization
+      ---
+      duration_ms: 12.8214
+      type: 'test'
+      ...
+# Warning: UnknownErrorException: Ensure that the `standardFontDataUrl` API parameter is provided.
+    # Subtest: PDF, Excel and DOCX services create, read and edit authorized documents
+    ok 2 - PDF, Excel and DOCX services create, read and edit authorized documents
+      ---
+      duration_ms: 499.7017
+      type: 'test'
+      ...
+    # Subtest: URL reader blocks loopback/private targets before any request
+    ok 3 - URL reader blocks loopback/private targets before any request
+      ---
+      duration_ms: 0.7049
+      type: 'test'
+      ...
+    # Subtest: Unity bridge installer includes object-level editor commands
+    ok 4 - Unity bridge installer includes object-level editor commands
+      ---
+      duration_ms: 7.9644
+      type: 'test'
+      ...
+    1..4
+ok 1 - expanded capabilities
+  ---
+  duration_ms: 521.9051
+  type: 'test'
+  ...
+# Subtest: HTTP, OAuth and real MCP SDK integration
+    # Subtest: unauthenticated MCP is denied and advertises resource metadata
+    ok 1 - unauthenticated MCP is denied and advertises resource metadata
+      ---
+      duration_ms: 24.2674
+      type: 'test'
+      ...
+    # Subtest: admin requires separate key and is absent from public port
+    ok 2 - admin requires separate key and is absent from public port
+      ---
+      duration_ms: 6.8077
+      type: 'test'
+      ...
+    # Subtest: unknown redirect hosts and plain PKCE are rejected
+    ok 3 - unknown redirect hosts and plain PKCE are rejected
+      ---
+      duration_ms: 4.5535
+      type: 'test'
+      ...
+    # Subtest: local pairing, S256 exchange and one-use code
+    ok 4 - local pairing, S256 exchange and one-use code
+      ---
+      duration_ms: 11.2258
+      type: 'test'
+      ...
+    # Subtest: wrong PKCE verifier cannot exchange a locally approved code
+    ok 5 - wrong PKCE verifier cannot exchange a locally approved code
+      ---
+      duration_ms: 5.7753
+      type: 'test'
+      ...
+    # Subtest: authorization code is bound to resource audience
+    ok 6 - authorization code is bound to resource audience
+      ---
+      duration_ms: 5.4621
+      type: 'test'
+      ...
+    # Subtest: rejected pairing returns access_denied without code
+    ok 7 - rejected pairing returns access_denied without code
+      ---
+      duration_ms: 4.5855
+      type: 'test'
+      ...
+    # Subtest: SDK initializes, discovers expanded tools and completes approved write
+    ok 8 - SDK initializes, discovers expanded tools and completes approved write
+      ---
+      duration_ms: 62.0535
+      type: 'test'
+      ...
+    # Subtest: read-only scope cannot write
+    ok 9 - read-only scope cannot write
+      ---
+      duration_ms: 21.0618
+      type: 'test'
+      ...
+    # Subtest: refresh rotates; replay revokes the grant family
+    ok 10 - refresh rotates; replay revokes the grant family
+      ---
+      duration_ms: 8.8873
+      type: 'test'
+      ...
+    # Subtest: pause blocks valid tokens and revoke invalidates them
+    ok 11 - pause blocks valid tokens and revoke invalidates them
+      ---
+      duration_ms: 5.1756
+      type: 'test'
+      ...
+    1..11
+ok 2 - HTTP, OAuth and real MCP SDK integration
+  ---
+  duration_ms: 179.5253
+  type: 'test'
+  ...
+# Subtest: filesystem and consent boundaries
+    # Subtest: authorized text read and negative line offset
+    ok 1 - authorized text read and negative line offset
+      ---
+      duration_ms: 6.5482
+      type: 'test'
+      ...
+    # Subtest: sibling-directory access and traversal fail closed
+    ok 2 - sibling-directory access and traversal fail closed
+      ---
+      duration_ms: 0.3438
+      type: 'test'
+      ...
+    # Subtest: empty roots deny access
+    ok 3 - empty roots deny access
+      ---
+      duration_ms: 0.1014
+      type: 'test'
+      ...
+    # Subtest: application files and credentials cannot be read
+    ok 4 - application files and credentials cannot be read
+      ---
+      duration_ms: 1.5944
+      type: 'test'
+      ...
+    # Subtest: junction/symlink escape is denied
+    ok 5 - junction/symlink escape is denied
+      ---
+      duration_ms: 2.0361
+      type: 'test'
+      ...
+    # Subtest: hard-link escape is denied
+    ok 6 - hard-link escape is denied
+      ---
+      duration_ms: 1.268
+      type: 'test'
+      ...
+    # Subtest: Windows ADS and device paths are denied
+    ok 7 - Windows ADS and device paths are denied
+      ---
+      duration_ms: 0.1876
+      type: 'test'
+      ...
+    # Subtest: read-only root rejects file mutations
+    ok 8 - read-only root rejects file mutations
+      ---
+      duration_ms: 0.1901
+      type: 'test'
+      ...
+    # Subtest: approval does not run until local decision and runs only once
+    ok 9 - approval does not run until local decision and runs only once
+      ---
+      duration_ms: 1.6227
+      type: 'test'
+      ...
+    # Subtest: rejected and expired requests never execute
+    ok 10 - rejected and expired requests never execute
+      ---
+      duration_ms: 1.4301
+      type: 'test'
+      ...
+    # Subtest: create refuses overwrite; edit matches exactly and backs up
+    ok 11 - create refuses overwrite; edit matches exactly and backs up
+      ---
+      duration_ms: 22.1322
+      type: 'test'
+      ...
+    # Subtest: move refuses overwrite; delete retains recovery copy
+    ok 12 - move refuses overwrite; delete retains recovery copy
+      ---
+      duration_ms: 15.9615
+      type: 'test'
+      ...
+    # Subtest: literal search completes and enforces owner isolation
+    ok 13 - literal search completes and enforces owner isolation
+      ---
+      duration_ms: 39.1633
+      type: 'test'
+      ...
+    # Subtest: file size and binary limits are enforced
+    ok 14 - file size and binary limits are enforced
+      ---
+      duration_ms: 2.8659
+      type: 'test'
+      ...
+    # Subtest: terminal default is disabled
+    ok 15 - terminal default is disabled
+      ---
+      duration_ms: 0.2486
+      type: 'test'
+      ...
+    # Subtest: terminal output, ownership and process-tree stop
+    ok 16 - terminal output, ownership and process-tree stop
+      ---
+      duration_ms: 268.9056
+      type: 'test'
+      ...
+    1..16
+ok 3 - filesystem and consent boundaries
+  ---
+  duration_ms: 373.3968
+  type: 'test'
+  ...
+# Subtest: setup protects private files without breaking access and preserves existing secrets
+ok 4 - setup protects private files without breaking access and preserves existing secrets
+  ---
+  duration_ms: 214.2656
+  type: 'test'
+  ...
+1..4
+# tests 35
+# suites 0
+# pass 35
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1235.5497
+
+EXIT CODE: 0
+
+=== Running instance checks ===
+PASS Node >=22: 24.15.0
+PASS Configuration
+PASS Compiled server
+PASS Allowed directory exists: F:\rdc_x\workspace
+PASS Local MCP listener
+PASS Unauthenticated MCP denied
+PASS Local admin authentication
+PASS Admin not exposed on MCP port
+Endpoint: https://unique-shuttle-coding-doom.trycloudflare.com/mcp
+HTTPS origin configured; verify tunnel connectivity separately.
+
+EXIT CODE: 0

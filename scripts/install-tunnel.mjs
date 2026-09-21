@@ -1,0 +1,28 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
+const base = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+if (process.platform !== 'win32') throw new Error('Use the official cloudflared package for your platform.');
+const dir = path.join(base, 'tools'); const target = path.join(dir, 'cloudflared.exe');
+if (fs.existsSync(target)) { console.log('Portable cloudflared already exists; no download needed.'); process.exit(0); }
+const headers = { 'User-Agent': 'rdc-x-personal-installer', Accept: 'application/vnd.github+json' };
+const meta = await fetch('https://api.github.com/repos/cloudflare/cloudflared/releases/latest', { headers, signal: AbortSignal.timeout(20000) });
+if (!meta.ok) throw new Error('Official release metadata unavailable: ' + meta.status);
+const release = await meta.json(); const arch = process.arch === 'x64' ? 'amd64' : process.arch === 'ia32' ? '386' : process.arch;
+const asset = release.assets.find(a => a.name === `cloudflared-windows-${arch}.exe`);
+if (!asset || !/^sha256:[a-f0-9]{64}$/.test(asset.digest ?? '')) throw new Error('No official asset with a SHA-256 digest for this architecture.');
+if (!asset.browser_download_url.startsWith('https://github.com/cloudflare/cloudflared/releases/download/')) throw new Error('Unexpected asset URL.');
+console.log('Downloading official portable cloudflared ' + release.tag_name + '; no service or tunnel will be started.');
+const response = await fetch(asset.browser_download_url, { signal: AbortSignal.timeout(90000) });
+if (!response.ok) throw new Error('Download failed: ' + response.status);
+const bytes = Buffer.from(await response.arrayBuffer());
+if (bytes.length > 100 * 1024 * 1024 || bytes.length !== asset.size) throw new Error('Unexpected asset size.');
+const sha256 = crypto.createHash('sha256').update(bytes).digest('hex');
+if ('sha256:' + sha256 !== asset.digest) throw new Error('Checksum mismatch; refusing installation.');
+fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(target, bytes, { flag: 'wx' });
+fs.writeFileSync(path.join(dir, 'cloudflared-release.json'), JSON.stringify({ version: release.tag_name, sha256, source: asset.browser_download_url }, null, 2));
+const check = spawnSync(target, ['--version'], { encoding: 'utf8', windowsHide: true, timeout: 10000 });
+if (check.status !== 0) throw new Error('Installed binary did not pass its version check.');
+console.log(check.stdout.trim()); console.log('Checksum verified. Installed only under: ' + dir);
