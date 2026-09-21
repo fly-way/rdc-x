@@ -9,6 +9,7 @@ export const configSchema = z.object({
   deviceId: z.string().uuid(),
   mcpPort: z.number().int().min(1024).max(65535).default(47831),
   adminPort: z.number().int().min(1024).max(65535).default(47832),
+  tunnelPort: z.number().int().min(1024).max(65535).default(47833),
   publicUrl: z.string().url().default('http://127.0.0.1:47831'),
   roots: z.array(z.object({ path: z.string().min(1), write: z.boolean() })).max(20),
   requireWriteApproval: z.boolean().default(true),
@@ -16,6 +17,7 @@ export const configSchema = z.object({
   systemProcessControlEnabled: z.boolean().default(false),
   desktopControlEnabled: z.boolean().default(false),
   networkFetchEnabled: z.boolean().default(false),
+  secureTunnelEnabled: z.boolean().default(false),
   commandPolicyMode: z.enum(['off','blocklist','allowlist']).default('blocklist'),
   blockedCommandPatterns: z.array(z.string().min(1).max(300)).max(100).default([]),
   allowedCommandPatterns: z.array(z.string().min(1).max(300)).max(100).default([]),
@@ -60,7 +62,8 @@ export class State {
       throw new Error('publicUrl must be an origin, without path/query/credentials.');
     if (u.protocol !== 'https:' && !(u.protocol === 'http:' && ['127.0.0.1', 'localhost'].includes(u.hostname)))
       throw new Error('Remote URL requires HTTPS.');
-    if (c.adminPort === c.mcpPort) throw new Error('Admin and MCP ports must differ.');
+    const ports = new Set([c.mcpPort, c.adminPort, c.tunnelPort]);
+    if (ports.size !== 3) throw new Error('MCP, admin and Secure MCP Tunnel ports must all differ.');
     for (const root of c.roots) {
       if (!path.isAbsolute(root.path) || !fs.statSync(root.path).isDirectory())
         throw new Error('Each allowed root must be an existing absolute directory.');
