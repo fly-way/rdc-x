@@ -1,4 +1,6 @@
 import { spawn, type ChildProcess } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
 import { StringDecoder } from 'node:string_decoder';
 import { random, type State } from './state.js';
 import type { PathGuard } from './paths.js';
@@ -84,7 +86,8 @@ export class ProcessService {
     );
 
     const win = process.platform === 'win32';
-    const executable = win ? 'powershell.exe' : '/bin/sh';
+    const pwsh = win ? path.join(process.env.ProgramFiles ?? 'C:\\Program Files', 'PowerShell', '7', 'pwsh.exe') : '';
+    const executable = win ? (fs.existsSync(pwsh) ? pwsh : 'powershell.exe') : '/bin/sh';
     const args = win
       ? [
           '-NoLogo',
