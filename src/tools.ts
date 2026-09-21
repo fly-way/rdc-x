@@ -97,7 +97,7 @@ export function createMcp(services: Services, owner: string, scopes: string[], a
   register('stop_search', 'Stop your own search.', { searchId:sid }, 'rdc.read', a=>searches.stop(a.searchId,owner));
   register('list_searches', 'List searches associated with this RDC-X connection.', {}, 'rdc.read', ()=>({searches:searches.list(owner)}));
 
-  mutate('start_process', 'Run a PowerShell command (Windows) or /bin/sh command. The terminal is NOT a filesystem sandbox.', { command:z.string().min(1).max(32000),cwd:p,timeoutSeconds:z.number().int().min(1).max(3600).default(120) }, a=>processes.start(owner,a.command,a.cwd,a.timeoutSeconds),'exec');
+  mutate('start_process', 'Run a PowerShell command (Windows) or /bin/sh command. The terminal is NOT a filesystem sandbox. Set interactive=true only for REPLs or commands that need later stdin.', { command:z.string().min(1).max(32000),cwd:p,timeoutSeconds:z.number().int().min(1).max(3600).default(120),interactive:z.boolean().default(false) }, a=>processes.start(owner,a.command,a.cwd,a.timeoutSeconds,a.interactive),'exec');
   register('read_process_output', 'Read bounded output from a session created by this RDC-X connection.', { sessionId:sid,offset:z.number().int().min(0).default(0),length:z.number().int().min(1).max(50000).default(20000) }, 'rdc.exec', a=>processes.read(a.sessionId,owner,a.offset,a.length));
   mutate('interact_with_process', 'Send exact stdin text to your running process.', { sessionId:sid,input:z.string().max(32000) }, a=>processes.input(a.sessionId,owner,a.input),'exec');
   register('list_sessions', 'List only sessions created by this RDC-X connection.', {}, 'rdc.exec', ()=>({sessions:processes.list(owner)}));
