@@ -21,6 +21,26 @@ if (fs.existsSync(configPath)) {
   for (const [key, value] of Object.entries({ tunnelPort: 47833, secureTunnelEnabled: false })) {
     if (!(key in existing)) { existing[key] = value; changed = true; }
   }
+
+  // If RDC-X was moved/renamed, migrate only the default workspace root from
+  // the previous install directory. User-added roots are never silently changed.
+  const currentWorkspace = path.join(base, 'workspace');
+  const installStem = value => path.basename(path.normalize(value)).toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (Array.isArray(existing.roots)) {
+    existing.roots = existing.roots.map(root => {
+      if (!root || typeof root.path !== 'string' || fs.existsSync(root.path)) return root;
+      const oldRoot = path.normalize(root.path);
+      const oldParent = path.dirname(oldRoot);
+      const looksLikeDefaultWorkspace =
+        path.basename(oldRoot).toLowerCase() === 'workspace' &&
+        installStem(oldParent) === installStem(base);
+      if (!looksLikeDefaultWorkspace) return root;
+      changed = true;
+      console.log(`Migrating default workspace root: ${root.path} -> ${currentWorkspace}`);
+      return { ...root, path: currentWorkspace };
+    });
+  }
+
   if (changed) fs.writeFileSync(configPath, JSON.stringify(existing, null, 2), { mode: 0o600 });
 }
 const token = path.join(data, 'admin-token.txt');
