@@ -22,7 +22,7 @@ const messages = {
     'gate.title':'连接 Secure Tunnel','gate.intro':'输入 Tunnel ID 与 Runtime API Key。连接达到 <b>Ready</b> 后，RDC-X 才会解锁 Dashboard。','gate.tunnelId':'Tunnel ID','gate.runtimeKey':'Runtime API Key','gate.keyPlaceholder':'输入 Runtime API Key',
     'gate.credentialTitle':'Tunnel ID 会保存在本机','gate.credentialBody':'Runtime API Key 会使用当前 Windows 用户的 DPAPI 加密保存；浏览器也可以自行提供密码自动填充。','gate.submit':'连接并进入 Dashboard','gate.waiting':'等待凭据','gate.help1':'首次使用需要 OpenAI Platform 创建的 Tunnel ID 和 Runtime API Key。','gate.help2':'RDC-X 不会把 Runtime API Key 打印到日志。',
     'gate.running':'Tunnel 已在运行；本次 Start-All 仍需验证凭据后才能进入 Dashboard。','gate.live':'tunnel-client 已启动，正在等待 OpenAI Control Plane Ready。','gate.savedKey':'Tunnel ID 已记录；请输入 Runtime API Key 以解锁本次 Dashboard。','gate.connecting':'正在启动 tunnel-client，并等待 OpenAI Secure MCP Tunnel Ready…','gate.connected':'Tunnel Ready，正在进入 Dashboard…','gate.badTunnelId':'Tunnel ID 格式必须是 tunnel_ + 32 位小写十六进制字符。','gate.keyRequired':'本次启动必须输入 Runtime API Key。',
-    'nav.overview':'概览','nav.approvals':'操作审批','nav.connection':'连接','nav.sessions':'终端会话','nav.audit':'审计日志','nav.policy':'访问策略','nav.lock':'锁定本机界面','sidebar.localService':'本机服务',
+    'nav.overview':'概览','nav.approvals':'操作审批','nav.connection':'连接','nav.sessions':'终端会话','nav.audit':'审计日志','nav.policy':'访问策略','sidebar.localService':'本机服务',
     'status.tunnelReady':'Tunnel 已就绪','status.thisComputer':'这台电脑','status.ready':'就绪','status.live':'在线','status.offline':'离线',
     'overview.pausedTitle':'远程访问已暂停','overview.pausedBody':'恢复后 ChatGPT 才能调用 RDC-X 工具。','overview.activeTitle':'安全访问已启用','overview.activeBody':'OpenAI Secure MCP Tunnel 已就绪，这台电脑可以接受 ChatGPT 的 RDC-X 工具调用。',
     'overview.tunnelUi':'Tunnel UI','overview.approval':'审批','overview.trusted':'免审批','overview.welcome':'欢迎使用 RDC-X','overview.subtitle':'本机策略决定 ChatGPT 能访问哪些目录、终端与桌面能力。',
@@ -50,7 +50,7 @@ const messages = {
     'gate.title':'Connect Secure Tunnel','gate.intro':'Enter your Tunnel ID and Runtime API Key. RDC-X unlocks the Dashboard only after the connection reaches <b>Ready</b>.','gate.tunnelId':'Tunnel ID','gate.runtimeKey':'Runtime API Key','gate.keyPlaceholder':'Enter Runtime API Key',
     'gate.credentialTitle':'Tunnel ID is stored locally','gate.credentialBody':'The Runtime API Key is protected with Windows DPAPI for the current user. Your browser may also offer password autofill.','gate.submit':'Connect and enter Dashboard','gate.waiting':'Waiting for credentials','gate.help1':'First-time setup requires a Tunnel ID and Runtime API Key created in OpenAI Platform.','gate.help2':'RDC-X never prints the Runtime API Key to its logs.',
     'gate.running':'The tunnel is already running. Enter credentials for this Start-All session to unlock the Dashboard.','gate.live':'tunnel-client is running and waiting for OpenAI Control Plane readiness.','gate.savedKey':'Tunnel ID is already stored. Enter the Runtime API Key to unlock this Dashboard session.','gate.connecting':'Starting tunnel-client and waiting for OpenAI Secure MCP Tunnel to become Ready…','gate.connected':'Tunnel Ready. Opening Dashboard…','gate.badTunnelId':'Tunnel ID must be tunnel_ followed by 32 lowercase hexadecimal characters.','gate.keyRequired':'Runtime API Key is required for this startup.',
-    'nav.overview':'Overview','nav.approvals':'Approvals','nav.connection':'Connection','nav.sessions':'Terminal sessions','nav.audit':'Audit log','nav.policy':'Access policy','nav.lock':'Lock local UI','sidebar.localService':'Local service',
+    'nav.overview':'Overview','nav.approvals':'Approvals','nav.connection':'Connection','nav.sessions':'Terminal sessions','nav.audit':'Audit log','nav.policy':'Access policy','sidebar.localService':'Local service',
     'status.tunnelReady':'Tunnel Ready','status.thisComputer':'This computer','status.ready':'Ready','status.live':'Live','status.offline':'Offline',
     'overview.pausedTitle':'Remote access is paused','overview.pausedBody':'Resume access before ChatGPT can call RDC-X tools.','overview.activeTitle':'Secure access is active','overview.activeBody':'OpenAI Secure MCP Tunnel is Ready and this computer can accept RDC-X tool calls from ChatGPT.',
     'overview.tunnelUi':'Tunnel UI','overview.approval':'Approval','overview.trusted':'Trusted','overview.welcome':'Welcome to RDC-X','overview.subtitle':'Local policy controls which files, terminal features and desktop capabilities ChatGPT can use.',
@@ -489,13 +489,6 @@ $('toggleGateKey').addEventListener('click', () => {
   const show = input.type === 'password';
   input.type = show ? 'text' : 'password';
   $('toggleGateKey').textContent = show ? t('common.hide') : t('common.show');
-});
-
-$('lockDashboard').addEventListener('click', () => {
-  key = '';
-  sessionStorage.removeItem('rdcx-key');
-  $('localAdminKey').value = '';
-  showAdminUnlock();
 });
 
 document.querySelectorAll('[data-view]').forEach(button => {
