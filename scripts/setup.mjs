@@ -9,9 +9,9 @@ const data = path.join(base, '.rdc');
 for (const dir of [data, path.join(data, 'backups'), path.join(data, 'trash'), path.join(base, 'workspace')]) fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
 const configPath = path.join(data, 'config.json');
 if (!fs.existsSync(configPath)) {
-  const config = { name: os.hostname(), deviceId: crypto.randomUUID(), mcpPort: 47831, adminPort: 47832,
+  const config = { name: os.hostname(), deviceId: crypto.randomUUID(), mcpPort: 47831, adminPort: 47832, tunnelPort: 47833,
     publicUrl: 'http://127.0.0.1:47831', roots: [{ path: path.join(base, 'workspace'), write: true }],
-    requireWriteApproval: true, terminalEnabled: false, maxFileBytes: 2097152, maxProcessSeconds: 600,
+    requireWriteApproval: true, terminalEnabled: false, secureTunnelEnabled: false, maxFileBytes: 2097152, maxProcessSeconds: 600,
     oauthRedirectHosts: ['chatgpt.com', 'chat.openai.com'], allowLoopbackOAuth: false };
   fs.writeFileSync(configPath, JSON.stringify(config, null, 2), { mode: 0o600 });
 }
