@@ -9,11 +9,19 @@ const data = path.join(base, '.rdc');
 for (const dir of [data, path.join(data, 'backups'), path.join(data, 'trash'), path.join(base, 'workspace')]) fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
 const configPath = path.join(data, 'config.json');
 if (!fs.existsSync(configPath)) {
-  const config = { name: os.hostname(), deviceId: crypto.randomUUID(), mcpPort: 47831, adminPort: 47832,
+  const config = { name: os.hostname(), deviceId: crypto.randomUUID(), mcpPort: 47831, adminPort: 47832, tunnelPort: 47833,
     publicUrl: 'http://127.0.0.1:47831', roots: [{ path: path.join(base, 'workspace'), write: true }],
-    requireWriteApproval: true, terminalEnabled: false, maxFileBytes: 2097152, maxProcessSeconds: 600,
+    requireWriteApproval: true, terminalEnabled: false, secureTunnelEnabled: false, maxFileBytes: 2097152, maxProcessSeconds: 600,
     oauthRedirectHosts: ['chatgpt.com', 'chat.openai.com'], allowLoopbackOAuth: false };
   fs.writeFileSync(configPath, JSON.stringify(config, null, 2), { mode: 0o600 });
+}
+if (fs.existsSync(configPath)) {
+  const existing = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  let changed = false;
+  for (const [key, value] of Object.entries({ tunnelPort: 47833, secureTunnelEnabled: false })) {
+    if (!(key in existing)) { existing[key] = value; changed = true; }
+  }
+  if (changed) fs.writeFileSync(configPath, JSON.stringify(existing, null, 2), { mode: 0o600 });
 }
 const token = path.join(data, 'admin-token.txt');
 if (!fs.existsSync(token)) fs.writeFileSync(token, crypto.randomBytes(32).toString('base64url'), { mode: 0o600 });

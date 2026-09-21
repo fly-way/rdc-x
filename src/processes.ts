@@ -1,4 +1,6 @@
 import { spawn, type ChildProcess } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
 import { StringDecoder } from 'node:string_decoder';
 import { random, type State } from './state.js';
 import type { PathGuard } from './paths.js';
@@ -14,6 +16,7 @@ type Session = {
   exitCode: number | null;
   output: string;
   discarded: number;
+  interactive: boolean;
   child: ChildProcess;
   timer?: NodeJS.Timeout;
 };
@@ -62,7 +65,7 @@ export class ProcessService {
     }
   }
 
-  async start(owner: string, command: string, cwd: string, seconds: number) {
+  async start(owner: string, command: string, cwd: string, seconds: number, interactive = false) {
     this.assertEnabled();
     this.assertCommandPolicy(command);
 
@@ -83,9 +86,18 @@ export class ProcessService {
     );
 
     const win = process.platform === 'win32';
-    const executable = win ? 'powershell.exe' : '/bin/sh';
+    const pwsh = win ? path.join(process.env.ProgramFiles ?? 'C:\\Program Files', 'PowerShell', '7', 'pwsh.exe') : '';
+    const executable = win ? (fs.existsSync(pwsh) ? pwsh : 'powershell.exe') : '/bin/sh';
     const args = win
-      ? ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', '[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new(); ' + command]
+      ? [
+          '-NoLogo',
+          '-NoProfile',
+          '-NonInteractive',
+          '-Command',
+          '[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new(); ' +
+            command +
+            '; if ($?) { exit 0 } else { exit 1 }'
+        ]
       : ['-c', command];
 
     const child = spawn(executable, args, {
@@ -107,6 +119,7 @@ export class ProcessService {
       exitCode: null,
       output: '',
       discarded: 0,
+      interactive,
       child
     };
     this.sessions.set(session.id, session);
@@ -125,6 +138,11 @@ export class ProcessService {
       stream?.on('data', data => append(decoder.write(data)));
       stream?.on('end', () => append(decoder.end()));
     }
+
+    // Ordinary one-shot commands should see EOF on stdin. Keeping the pipe open
+    // can make Windows PowerShell wait indefinitely after the command finishes.
+    // Explicit interactive sessions keep stdin open for interact_with_process.
+    if (!interactive) child.stdin?.end();
 
     child.on('error', error => {
       append(`\n[spawn error] ${error.message}`);
@@ -172,6 +190,9 @@ export class ProcessService {
   async input(id: string, owner: string, text: string) {
     this.assertEnabled();
     const item = this.find(id, owner);
+    if (!item.interactive) {
+      throw new Error('Session is not interactive. Start it with interactive=true to send stdin.');
+    }
     if (item.state !== 'running' || !item.child.stdin?.writable) {
       throw new Error('Session is not accepting input.');
     }
@@ -184,6 +205,11 @@ export class ProcessService {
   private async terminate(item: Session) {
     if (!item.pid || item.child.exitCode !== null) return;
     clearTimeout(item.timer);
+
+    const closed = new Promise<void>(resolve => {
+      if (item.child.exitCode !== null) resolve();
+      else item.child.once('close', () => resolve());
+    });
 
     if (process.platform === 'win32') {
       await new Promise<void>(resolve => {
@@ -204,6 +230,13 @@ export class ProcessService {
         item.child.kill('SIGKILL');
       }
     }
+
+    // Do not report a stopped tree before Node has observed the child close.
+    // This also lets stdout/stderr drain and prevents Windows temp-directory cleanup races.
+    await Promise.race([
+      closed,
+      new Promise<void>(resolve => setTimeout(resolve, 5000))
+    ]);
   }
 
   async stop(id: string, owner: string) {

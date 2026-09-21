@@ -8,10 +8,10 @@ import { fixture, port } from './helpers.js';
 import { createApp } from '../src/app.js';
 
 await test('HTTP, OAuth and real MCP SDK integration', async t => {
-  const f = fixture(); const mcpPort = await port(); let adminPort = await port(); while (adminPort === mcpPort) adminPort = await port();
-  f.state.saveConfig({ ...f.state.config, mcpPort, adminPort, publicUrl: `http://127.0.0.1:${mcpPort}` });
+  const f = fixture(); const mcpPort = await port(); let adminPort = await port(); while (adminPort === mcpPort) adminPort = await port(); let tunnelPort = await port(); while (tunnelPort === mcpPort || tunnelPort === adminPort) tunnelPort = await port();
+  f.state.saveConfig({ ...f.state.config, mcpPort, adminPort, tunnelPort, secureTunnelEnabled: true, publicUrl: `http://127.0.0.1:${mcpPort}` });
   const app = createApp(f.base); await app.listen();
-  const origin = `http://127.0.0.1:${mcpPort}`; const local = `http://127.0.0.1:${adminPort}`;
+  const origin = `http://127.0.0.1:${mcpPort}`; const local = `http://127.0.0.1:${adminPort}`; const tunnel = `http://127.0.0.1:${tunnelPort}`;
   t.after(async () => { await app.stop(); f.clean(); });
   const post = (url: string, body: unknown, key?: string) => fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(key ? { 'X-RDC-Admin': key } : {}) }, body: JSON.stringify(body) });
   async function exchange(clientId: string, code: string, verifier: string, extra: Record<string, string> = {}) {
@@ -90,6 +90,36 @@ await test('HTTP, OAuth and real MCP SDK integration', async t => {
       assert.equal((await app.files.text('sdk-test.txt')).text, 'written via approved MCP');
       const noConfig = (await client.listTools()).tools.some(tool => ['set_config_value', 'approve', 'shutdown'].includes(tool.name)); assert.equal(noConfig, false);
     } finally { await client.close(); }
+  });
+  await t.test('loopback Secure MCP Tunnel endpoint works without OAuth but keeps local approval', async () => {
+    const client = new Client({ name: 'secure-tunnel-test', version: '1' });
+    await client.connect(new StreamableHTTPClientTransport(new URL(tunnel + '/mcp')));
+    try {
+      const tools = (await client.listTools()).tools;
+      assert.ok(tools.some(tool => tool.name === 'desktop_screenshot'));
+      const ping: any = await client.callTool({ name: 'ping', arguments: {} });
+      assert.equal(JSON.parse(ping.content[0].text).status, 'online');
+      const write: any = await client.callTool({ name: 'write_file', arguments: { path: 'tunnel-test.txt', content: 'secure tunnel', mode: 'create' } });
+      const pending = JSON.parse(write.content[0].text);
+      assert.equal(pending.status, 'approval_required');
+      await post(local + '/api/approvals/' + pending.requestId, { approve: true }, f.key);
+      const result: any = await client.callTool({ name: 'get_request_result', arguments: { requestId: pending.requestId } });
+      assert.equal(JSON.parse(result.content[0].text).status, 'completed');
+      assert.equal((await app.files.text('tunnel-test.txt')).text, 'secure tunnel');
+    } finally { await client.close(); }
+  });
+  await t.test('Secure MCP Tunnel session can be locally switched to trusted mode', async () => {
+    const changed = await post(local + '/api/tunnel/approval-mode', { mode: 'trusted' }, f.key);
+    assert.equal(changed.status, 200);
+    const client = new Client({ name: 'secure-tunnel-trusted-test', version: '1' });
+    await client.connect(new StreamableHTTPClientTransport(new URL(tunnel + '/mcp')));
+    try {
+      const write: any = await client.callTool({ name: 'write_file', arguments: { path: 'tunnel-trusted.txt', content: 'trusted', mode: 'create' } });
+      assert.equal(JSON.parse(write.content[0].text).path.endsWith('tunnel-trusted.txt'), true);
+    } finally {
+      await client.close();
+      await post(local + '/api/tunnel/approval-mode', { mode: 'default' }, f.key);
+    }
   });
   await t.test('read-only scope cannot write', async () => {
     const readOnly = await tokens('rdc.read'); const client = new Client({ name: 'readonly-test', version: '1' });

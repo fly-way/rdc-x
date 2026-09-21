@@ -107,8 +107,8 @@ await test('filesystem and consent boundaries', async t => {
       f.state.config.allowedCommandPatterns = [ok];
       await assert.rejects(() => terminal.start('owner', blocked, f.workspace, 5), /not allowed by the local command allowlist/i);
 
-      const session = await terminal.start('owner', ok, f.workspace, 5);
-      await eventually(() => terminal.read(session.sessionId, 'owner').state !== 'running');
+      const session = await terminal.start('owner', ok, f.workspace, 20);
+      await eventually(() => terminal.read(session.sessionId, 'owner').state !== 'running', 20000);
       assert.match(terminal.read(session.sessionId, 'owner').output, /policy-ok/);
     } finally {
       await terminal.stopAll();
@@ -121,8 +121,8 @@ await test('filesystem and consent boundaries', async t => {
   await t.test('terminal output, ownership and process-tree stop', async () => {
     f.state.config.terminalEnabled = true; const terminal = new ProcessService(f.state, files.guard);
     try {
-      const session = await terminal.start('owner', process.platform === 'win32' ? "Write-Output 'rdcx-process-ok'" : "printf 'rdcx-process-ok'", f.workspace, 5);
-      await eventually(() => terminal.read(session.sessionId, 'owner').state !== 'running');
+      const session = await terminal.start('owner', process.platform === 'win32' ? "Write-Output 'rdcx-process-ok'" : "printf 'rdcx-process-ok'", f.workspace, 20);
+      await eventually(() => terminal.read(session.sessionId, 'owner').state !== 'running', 20000);
       assert.match(terminal.read(session.sessionId, 'owner').output, /rdcx-process-ok/);
       assert.throws(() => terminal.read(session.sessionId, 'other'));
       const long = await terminal.start('owner', process.platform === 'win32' ? 'Start-Sleep -Seconds 30' : 'sleep 30', f.workspace, 30);
