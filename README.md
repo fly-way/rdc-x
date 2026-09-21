@@ -1,40 +1,46 @@
 # RDC-X / Personal computer MCP gateway
 
-RDC-X is a self-hosted, single-computer MCP gateway for personal use. It provides controlled access to files, terminal sessions, desktop automation, documents, system information, and Unity Editor workflows without depending on Remote Desktop Commander. The project contains no account system, subscription logic, telemetry, or payment wall.
+RDC-X is a self-hosted, single-computer MCP gateway for personal use. It provides controlled access to files, terminal sessions, desktop automation, documents, system information, and Unity Editor workflows without depending on Remote Desktop Commander.
 
-The recommended remote transport is **OpenAI Secure MCP Tunnel**. RDC-X keeps its tunnel-facing MCP listener on loopback and the official `tunnel-client` makes the outbound connection to OpenAI.
+For the normal RDC-X workflow, **OpenAI Secure MCP Tunnel is mandatory**. The local service can start without a remote connection so its sign-in page can be served, but the Dashboard is not unlocked until the Secure MCP Tunnel reaches **Ready**.
 
-## Windows quick start
+## Windows daily workflow
 
-There is one user-facing Windows launcher:
+RDC-X has one user-facing Windows launcher:
 
 ```text
 Start-All.cmd
 ```
 
-Double-click it after each Windows boot. It:
+Run it after Windows starts. It:
 
 1. checks Node.js 22+;
 2. synchronizes npm dependencies;
-3. runs the local setup/migration step;
+3. runs local setup/migrations;
 4. builds the TypeScript server;
-5. starts RDC-X in the background if it is not already running;
-6. opens the local dashboard directly on the **Connections** page;
-7. automatically starts the managed Secure MCP Tunnel when a saved Tunnel ID and Runtime API Key are available.
+5. restarts RDC-X so the running backend matches the checked-out files;
+6. opens the local **Secure Tunnel sign-in** page.
 
-The other legacy `.cmd` launchers were removed. Service shutdown, Secure Tunnel start/stop, credential setup, approvals, and access policy are handled from the local dashboard.
+The sign-in page requires:
 
-Local dashboard:
+- **Tunnel ID**
+- **Runtime API Key**
+
+The Tunnel ID is remembered locally and prefilled on later runs. The Runtime API Key field uses standard password-manager autocomplete, so the browser may offer to remember/fill it. RDC-X also stores an encrypted DPAPI copy for local tunnel lifecycle operations, but a fresh Runtime API Key entry is still required to unlock each new RDC-X process started by `Start-All.cmd`.
+
+After submission RDC-X starts the official `tunnel-client` and waits for the tunnel to become **Ready**. Only then does the browser enter the Dashboard.
+
+Local control URL:
 
 ```text
 http://127.0.0.1:47832
 ```
 
-The launcher opens it with a local admin-key fragment so the key does not need to be copied manually.
+`Start-All.cmd` opens that URL with a local admin-key fragment. The admin key is not printed.
 
-## First-time Secure MCP Tunnel setup
+## Secure Tunnel credentials
 
-Install the official OpenAI `tunnel-client` and make it available in one of these locations:
+Install the official OpenAI `tunnel-client` and make it available through one of:
 
 ```text
 <repo>\tools\tunnel-client.exe
@@ -42,71 +48,89 @@ PATH
 TUNNEL_CLIENT_PATH
 ```
 
-Then run `Start-All.cmd`. On **Connections -> OpenAI Secure MCP Tunnel**, enter:
+Tunnel metadata is stored at:
 
-- **Tunnel ID**: `tunnel_` followed by 32 lowercase hexadecimal characters.
-- **Runtime API Key**: a runtime key authorized to use the target tunnel.
+```text
+.rdc\secure-tunnel.json
+```
 
-Choose **Save and start Tunnel**.
+On Windows, RDC-X protects the Runtime API Key with **Windows DPAPI / CurrentUser** and stores only the protected representation at:
 
-RDC-X stores the Tunnel ID locally in `.rdc/secure-tunnel.json`. On Windows, the Runtime API Key is encrypted with **Windows DPAPI / CurrentUser** and stored in `.rdc/secure-tunnel-key.dpapi`. The plaintext key is not returned by the dashboard API and is not written to logs. The encrypted value is tied to the Windows user profile that saved it.
+```text
+.rdc\secure-tunnel-key.dpapi
+```
 
-After the first successful setup, later boots normally require only:
+The plaintext Runtime API Key is not returned by the dashboard API and is not written to RDC-X logs. The DPAPI ciphertext is bound to the Windows user profile that protected it.
+
+## Required connection model
 
 ```text
 Start-All.cmd
-```
-
-RDC-X will attempt to restart the saved Secure MCP Tunnel automatically. The dashboard shows live/readiness state and provides a link to the tunnel-client UI at `http://127.0.0.1:47834/ui`.
-
-The dashboard also provides **Delete saved Runtime API Key** if the key should no longer persist on the computer.
-
-## Network layout
-
-```text
-ChatGPT / supported OpenAI surface
-        |
-OpenAI Secure MCP Tunnel
-        |
+      |
+Secure Tunnel sign-in
+      |
+Tunnel ID + Runtime API Key
+      |
 official tunnel-client
-        |
-127.0.0.1:47833/mcp
-        |
-RDC-X
-        |
-Windows / files / desktop / Unity
+      |
+OpenAI Secure MCP Tunnel  (must be Ready)
+      |
+Dashboard unlocked
+      |
+ChatGPT <-> RDC-X <-> Windows
 ```
 
 Default local listeners:
 
 - `127.0.0.1:47831` — legacy OAuth-protected MCP listener.
-- `127.0.0.1:47832` — local admin dashboard.
-- `127.0.0.1:47833` — loopback-only Secure MCP Tunnel target.
-- `127.0.0.1:47834` — tunnel-client health/admin UI when the managed tunnel is running.
+- `127.0.0.1:47832` — local sign-in / admin Dashboard.
+- `127.0.0.1:47833` — loopback-only Secure MCP Tunnel MCP target.
+- `127.0.0.1:47834` — tunnel-client health/admin UI while running.
 
-Port 47833 is intentionally separate from the legacy public/OAuth MCP listener and must not be forwarded to the public internet.
+Port 47833 is loopback-only and must not be forwarded to the public internet.
+
+## Dashboard
+
+The Dashboard uses a light business-console layout with:
+
+- Secure Tunnel readiness and Tunnel ID;
+- pending approvals;
+- authorized directory count;
+- managed terminal sessions;
+- current file/terminal/desktop policy;
+- recent audit activity;
+- Secure Tunnel approval mode;
+- access-policy configuration.
+
+If the managed tunnel stops or loses readiness, the UI returns to the Secure Tunnel sign-in gate.
+
+The **Connection** page can open the official tunnel-client UI, switch the tunnel owner between per-action approval and temporary trusted mode, or disconnect and return to sign-in to replace credentials.
+
+Legacy OAuth pairings remain available only under the advanced compatibility section.
 
 ## ChatGPT workspace requirement
 
-Secure MCP Tunnel is a transport; it does not bypass ChatGPT workspace policy. The target ChatGPT workspace must allow the relevant custom/developer MCP app and the tunnel must be available to that workspace. Where the current user cannot create/publish the app, a workspace administrator or other authorized operator must provision it.
+Secure MCP Tunnel is transport, not a bypass for ChatGPT workspace policy. The target ChatGPT workspace must allow the relevant custom/developer MCP app and the app must reference the same tunnel. Where the current user cannot create or publish the app, an authorized workspace administrator/operator must provision it.
 
-Once the ChatGPT-side RDC-X app is published and points to the same tunnel, rebooting the Windows computer does not require recreating the app or tunnel. Run `Start-All.cmd` to restore the local side.
+Creating the ChatGPT-side RDC-X app is normally a one-time workspace operation. Restarting the Windows computer does not require recreating the app or the OpenAI tunnel resource.
 
 ## Local approval model
 
-Secure Tunnel calls still pass through RDC-X controls. By default, mutations may require local approval. The Connections page can temporarily switch the Secure Tunnel owner to **trusted for this process lifetime**, allowing mutation calls without per-action approval until trust is reset or RDC-X restarts.
+Secure Tunnel calls still pass through RDC-X local controls. By default, mutations can require local approval.
+
+The Connection page can temporarily mark the Secure Tunnel session as trusted. That trust is held only in memory and is reset by an RDC-X restart.
 
 The Access Policy page controls:
 
 - read/write roots;
 - file-write approval policy;
 - terminal enablement;
-- arbitrary system-process termination;
+- arbitrary non-critical system-process termination;
 - desktop input/screenshot access;
-- bounded public HTTP/HTTPS fetching;
+- bounded public HTTP/HTTPS text fetching;
 - legacy OAuth callback hosts.
 
-Terminal execution is **not an operating-system sandbox**. Approved commands run with the current Windows user's privileges and can access resources that user can access. Use a dedicated low-privilege Windows account or VM when stronger isolation is required.
+Terminal execution is **not an operating-system sandbox**. Approved commands run with the current Windows user's privileges. Use a dedicated low-privilege Windows account or VM when stronger isolation is required.
 
 ## Included capabilities
 
@@ -114,27 +138,25 @@ RDC-X exposes 60+ MCP tools, including:
 
 - bounded file listing, reading, writing, editing, moving, soft deletion, images, backups and recovery;
 - literal filename/content search;
-- managed terminal/process sessions with command policy controls;
+- managed terminal/process sessions;
 - system information and guarded process termination;
-- PDF, XLSX and DOCX read/write/edit operations;
+- PDF, XLSX and DOCX operations;
 - bounded public URL retrieval with private-network/SSRF protections;
 - Windows desktop screenshots, window focus, keyboard, mouse and clipboard operations;
-- Unity project discovery, console, Editor bridge, hierarchy, scene, selection, components, Game View screenshots, Play Mode, GameObjects, transforms and components;
+- Unity project discovery, Console, Editor bridge, hierarchy, scenes, selection, components, Game View, Play Mode, GameObjects and transforms;
 - approval-result polling and local audit visibility.
 
 ## Legacy OAuth/public route
 
-The OAuth-protected listener on port 47831 remains available for advanced/manual deployments. RDC-X no longer provides separate Windows `.cmd` launchers for the old Cloudflare Quick Tunnel flow. If the legacy path is deliberately required, the underlying Node maintenance scripts remain available for developers, but Secure MCP Tunnel is the default documented workflow.
+The OAuth-protected listener on port 47831 remains in the codebase for advanced/manual compatibility scenarios. It is not part of the normal RDC-X sign-in flow and does not replace the mandatory Secure MCP Tunnel gate in the Dashboard UI.
 
 ## Private data
 
-The `.rdc` directory contains private local state, including the admin key, OAuth records, audit data, backups/trash, Secure Tunnel metadata, and the DPAPI-protected Runtime API Key. It is gitignored and must not be uploaded or shared.
-
-The Runtime API Key ciphertext is only useful to the same Windows user context that protected it, but it should still be treated as sensitive local state.
+The `.rdc` directory contains private local state, including the admin key, OAuth records, audit data, backups/trash, Tunnel metadata, and the DPAPI-protected Runtime API Key. It is gitignored and must not be uploaded or shared.
 
 ## Development and diagnostics
 
-Use npm/Node commands instead of additional `.cmd` files:
+Use npm/Node maintenance commands:
 
 ```powershell
 cd F:\rdc-x
@@ -144,12 +166,10 @@ npm.cmd run doctor
 node scripts\verify.mjs
 ```
 
-`npm run doctor` checks the running local listeners. `node scripts/verify.mjs` runs TypeScript checks, automated tests, and running-instance diagnostics and writes `TEST-REPORT.txt` / `VERIFICATION.txt`.
-
 ## Primary references
 
 - OpenAI Secure MCP Tunnel: https://developers.openai.com/api/docs/guides/secure-mcp-tunnels
-- OpenAI public tunnel-client: https://github.com/openai/tunnel-client
+- OpenAI tunnel-client: https://github.com/openai/tunnel-client
 - ChatGPT developer mode and MCP apps: https://help.openai.com/en/articles/12584461-developer-mode-and-mcp-apps-in-chatgpt
 - MCP authorization: https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization
 - MCP TypeScript SDK: https://ts.sdk.modelcontextprotocol.io/server
