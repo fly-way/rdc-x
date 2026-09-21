@@ -26,9 +26,9 @@ export function protectSecret(secret: string) {
   }
   const script = [
     '$plain=[Console]::In.ReadToEnd();',
-    '$bytes=[System.Text.Encoding]::UTF8.GetBytes($plain);',
-    '$protected=[System.Security.Cryptography.ProtectedData]::Protect($bytes,$null,[System.Security.Cryptography.DataProtectionScope]::CurrentUser);',
-    '[Console]::Out.Write([Convert]::ToBase64String($protected));'
+    '$secure=ConvertTo-SecureString -String $plain -AsPlainText -Force;',
+    '$cipher=ConvertFrom-SecureString -SecureString $secure;',
+    '[Console]::Out.Write($cipher);'
   ].join(' ');
   const result = spawnSync(powershellPath(), ['-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand', encodePowerShell(script)], {
     input: secret,
@@ -37,7 +37,8 @@ export function protectSecret(secret: string) {
     timeout: 10000
   });
   if (result.status !== 0 || !String(result.stdout ?? '').trim()) {
-    throw new Error('Could not protect Runtime API key with Windows DPAPI: ' + String(result.stderr ?? '').trim());
+    const detail = String(result.stderr ?? '').replace(/#< CLIXML/g, '').trim();
+    throw new Error('Could not protect Runtime API key with Windows DPAPI' + (detail ? ': ' + detail : '.'));
   }
   return String(result.stdout).trim();
 }
@@ -48,9 +49,9 @@ export function unprotectSecret(ciphertext: string) {
   }
   const script = [
     '$cipher=[Console]::In.ReadToEnd();',
-    '$bytes=[Convert]::FromBase64String($cipher);',
-    '$plain=[System.Security.Cryptography.ProtectedData]::Unprotect($bytes,$null,[System.Security.Cryptography.DataProtectionScope]::CurrentUser);',
-    '[Console]::Out.Write([System.Text.Encoding]::UTF8.GetString($plain));'
+    '$secure=ConvertTo-SecureString -String $cipher;',
+    '$ptr=[Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure);',
+    'try { [Console]::Out.Write([Runtime.InteropServices.Marshal]::PtrToStringBSTR($ptr)); } finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr); }'
   ].join(' ');
   const result = spawnSync(powershellPath(), ['-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand', encodePowerShell(script)], {
     input: ciphertext,
@@ -59,7 +60,8 @@ export function unprotectSecret(ciphertext: string) {
     timeout: 10000
   });
   if (result.status !== 0) {
-    throw new Error('Could not unlock Runtime API key with Windows DPAPI for the current Windows user.');
+    const detail = String(result.stderr ?? '').replace(/#< CLIXML/g, '').trim();
+    throw new Error('Could not unlock Runtime API key with Windows DPAPI for the current Windows user' + (detail ? ': ' + detail : '.'));
   }
   return String(result.stdout ?? '');
 }
