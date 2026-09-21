@@ -1,20 +1,182 @@
 <!doctype html>
 <html lang="zh-CN">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>RDC-X / Local control</title><link rel="stylesheet" href="/style.css"><script src="/app.js" defer></script></head>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RDC-X / Local control</title>
+<link rel="stylesheet" href="/style.css">
+<script src="/app.js" defer></script>
+</head>
 <body>
-<div id="lock" class="lock"><div class="login"><div class="brand">RDC<span> X</span></div><p class="eyebrow">PERSONAL COMPUTER GATEWAY</p><h1 data-i18n="unlockTitle">Your computer.<br>Your rules.</h1><p data-i18n="unlockHint">Open Dashboard.cmd on this computer, or enter the local admin key.</p><form id="unlock"><input id="key" type="password" autocomplete="off" placeholder="Local admin key" required><button type="submit" data-i18n="unlock">Unlock dashboard</button></form><small>The admin key never belongs in ChatGPT.</small></div></div>
+<div id="lock" class="lock">
+  <div class="login">
+    <div class="brand">RDC<span> X</span></div>
+    <p class="eyebrow">PERSONAL COMPUTER GATEWAY</p>
+    <h1>你的电脑，你来掌控。</h1>
+    <p>请在本机运行 <code>Start-All.cmd</code>，它会自动携带本地管理密钥打开此页面。也可以手工输入管理密钥。</p>
+    <form id="unlock">
+      <input id="key" type="password" autocomplete="off" placeholder="Local admin key" required>
+      <button type="submit">解锁控制面板</button>
+    </form>
+    <small>管理密钥永远不要发送给 ChatGPT。</small>
+  </div>
+</div>
+
 <div id="shell" hidden>
-<aside><div class="brand">RDC<span> X</span><small>PERSONAL EDITION</small></div><div class="nav-label">WORKSPACE</div><nav>
-<button class="nav active" data-view="overview" data-i18n="overview">Overview</button><button class="nav" data-view="requests" data-i18n="requests">Approvals</button><button class="nav" data-view="connections" data-i18n="connections">Connections</button><button class="nav" data-view="sessions" data-i18n="sessions">Terminal sessions</button><button class="nav" data-view="audit" data-i18n="audit">Audit log</button><button class="nav" data-view="settings" data-i18n="settings">Access policy</button>
-</nav><div class="sidebar-foot"><span class="dot"></span> LOCAL CONTROL ONLY<p>No accounts. No billing.<br>No telemetry.</p><button id="logout" class="text-button" data-i18n="lock">Lock dashboard</button></div></aside>
-<main><header><span>Personal workspace <span class="slash">/</span> <b id="breadcrumb">Overview</b></span><span class="local-label">127.0.0.1 <span class="dot"></span></span></header>
-<section class="hero"><div><p class="eyebrow">AUTHORIZED ACCESS / HUMAN IN CONTROL</p><h1 data-i18n="heroTitle">Your computer. Your rules.</h1><p id="device">Connecting to the local service...</p></div><button id="pause" class="danger-outline" data-i18n="pause">Pause access</button></section>
-<div class="metrics"><article><span data-i18n="service">Service status</span><strong id="serviceStatus">--</strong><small id="uptime">--</small></article><article><span data-i18n="pending">Awaiting approval</span><strong id="pendingCount">0</strong><small data-i18n="localApproval">Only you can authorize</small></article><article><span data-i18n="roots">Authorized directories</span><strong id="rootCount">0</strong><small data-i18n="leastPrivilege">Explicit access boundaries</small></article><article><span data-i18n="linked">Linked authorizations</span><strong id="linkedCount">0</strong><small>OAuth + PKCE / S256</small></article></div>
-<section class="view active" id="view-overview"><div class="grid"><article class="panel"><div class="panel-heading"><h2 data-i18n="connectTitle">Connect ChatGPT</h2><span class="badge">MCP</span></div><p data-i18n="endpointLabel">Remote MCP endpoint</p><div class="endpoint"><code id="endpoint">--</code><button id="copyEndpoint" class="small">COPY</button></div><div id="remoteWarning" class="notice"></div><ol class="steps"><li data-i18n="step1">Start an HTTPS tunnel to the MCP port only.</li><li data-i18n="step2">Create a custom app in ChatGPT; choose OAuth.</li><li data-i18n="step3">Compare the pairing code and approve here.</li></ol></article><article class="panel"><h2 data-i18n="boundaries">Safety boundaries</h2><div class="policy-line"><span data-i18n="writePolicy">File changes</span><b id="writePolicy">Approval required</b></div><div class="policy-line"><span data-i18n="terminalPolicy">Terminal commands</span><b id="terminalPolicy">Disabled</b></div><div class="policy-line"><span data-i18n="dashboardPolicy">Admin dashboard</span><b>Loopback only</b></div><p class="muted" data-i18n="safetyHint">Terminal commands have your OS user privileges. Directory rules are not a shell sandbox.</p></article></div><article class="panel"><div class="panel-heading"><h2 data-i18n="recentTitle">Recent activity</h2><span class="badge">LIVE</span></div><div id="recentAudit"></div></article></section>
-<section class="view" id="view-requests"><article class="panel"><h2 data-i18n="requestsTitle">Review the exact operation</h2><p class="muted" data-i18n="requestHint">Approving executes once. Reject anything you did not request. Completed results are available to ChatGPT.</p><div id="approvalList"></div></article></section>
-<section class="view" id="view-connections"><article class="panel"><h2 data-i18n="pairTitle">Connection requests</h2><p class="muted" data-i18n="pairHint">Approve only the code shown in the authorization page you just opened.</p><div id="pairList"></div></article><article class="panel"><div class="panel-heading"><h2>OpenAI Secure MCP Tunnel</h2><span class="badge">PRIVATE</span></div><p class="muted">RDC-X 在单独的 loopback 端口提供无 OAuth 的 MCP 入口，只供本机 tunnel-client 使用。不要把此端口转发到公网。</p><div class="endpoint"><code id="secureTunnelEndpoint">--</code></div><div class="policy-line"><span>本机 Tunnel 入口</span><b id="secureTunnelStatus">--</b></div><div class="policy-line"><span>审批模式</span><b id="secureTunnelApproval">--</b></div><div class="actions"><button id="secureTunnelTrust" class="danger-outline">本次 Tunnel 会话免审批</button><button id="secureTunnelRestore" class="text-button">恢复逐次审批</button></div><p class="muted">启用后，在命令行设置 CONTROL_PLANE_TUNNEL_ID 与 CONTROL_PLANE_API_KEY，然后运行 Start-Secure-Tunnel.cmd。</p></article><article class="panel"><h2>会话审批策略</h2><p class="muted">每个 OAuth 授权会话都可独立选择“逐次审批”或“本次会话免审批”。免审批只保存在内存中，服务重启或撤销授权后自动恢复。</p><div id="authorizationList"></div></article><article class="panel danger-panel"><h2 data-i18n="revokeTitle">Disconnect all clients</h2><p data-i18n="revokeHint">Revoke all access and refresh tokens, cancel pending actions and stop owned terminal sessions.</p><button id="revoke" class="danger-outline" data-i18n="revoke">Revoke all authorizations</button><button id="resetClients" class="text-button" data-i18n="resetClients">Clear OAuth registrations</button></article></section>
-<section class="view" id="view-sessions"><article class="panel"><h2 data-i18n="sessionsTitle">Managed terminal sessions</h2><p class="muted">这里列出 RDC-X 创建的终端会话；任意系统进程终止能力需在访问策略中单独开启，并受会话审批策略控制。</p><div id="sessionList"></div></article></section>
-<section class="view" id="view-audit"><article class="panel"><h2 data-i18n="auditTitle">Local audit trail</h2><p class="muted" data-i18n="auditHint">Tokens, file bodies and stdin bodies are not stored in audit events. Latest 200 events shown.</p><div id="auditList"></div></article></section>
-<section class="view" id="view-settings"><article class="panel"><h2 data-i18n="settingsTitle">Access policy</h2><form id="settingsForm"><label><span data-i18n="deviceName">Device name</span><input id="name" maxlength="80" required></label><label><span data-i18n="publicUrl">Public HTTPS origin</span><input id="publicUrl" type="url" required><small data-i18n="urlHint">Origin only, without /mcp. Changing it revokes previous authorizations.</small></label><label><span data-i18n="rootsInput">Authorized roots: one per line, rw | path or ro | path</span><textarea id="rootsInput" rows="6" spellcheck="false"></textarea><small data-i18n="rootsHint">Existing directories only. Empty list denies all file access.</small></label><label class="toggle"><input id="writeApproval" type="checkbox"><span>默认要求文件修改逐次审批（单个授权会话仍可临时切为免审批）</span></label><label class="toggle"><input id="terminalEnabled" type="checkbox"><span>允许终端命令（逐次审批或按授权会话临时免审批）</span></label><label class="toggle"><input id="systemProcessEnabled" type="checkbox"><span>允许终止任意非关键系统进程</span></label><label class="toggle"><input id="desktopEnabled" type="checkbox"><span>允许桌面截图、窗口、鼠标与键盘控制</span></label><label class="toggle"><input id="networkFetchEnabled" type="checkbox"><span>允许读取公网 HTTP/HTTPS 文本（私网、本机地址与 URL 凭据会被阻止）</span></label><label class="toggle"><input id="secureTunnelEnabled" type="checkbox"><span>启用 OpenAI Secure MCP Tunnel 本机入口（仅 127.0.0.1，供 tunnel-client 使用）</span></label><div class="notice warning" data-i18n="terminalWarning">Terminal is NOT an OS sandbox. An approved command can access files or networks outside these roots. Keep disabled unless needed; use a separate OS account or VM for isolation.</div><label><span data-i18n="oauthHosts">Allowed OAuth redirect hostnames</span><input id="oauthHosts"><small>Exact hostnames separated by commas. No wildcard.</small></label><button type="submit" data-i18n="save">Save access policy</button><small id="saveStatus"></small></form></article></section>
-<footer>RDC-X 0.2.0 <span>SELF-HOSTED / SINGLE DEVICE / PRIVATE BY DEFAULT</span></footer></main></div><div id="toast" role="status" hidden></div>
-</body></html>
+<aside>
+  <div class="brand">RDC<span> X</span><small>PERSONAL EDITION</small></div>
+  <div class="nav-label">WORKSPACE</div>
+  <nav>
+    <button class="nav active" data-view="overview">总览</button>
+    <button class="nav" data-view="requests">操作审批</button>
+    <button class="nav" data-view="connections">连接授权</button>
+    <button class="nav" data-view="sessions">终端会话</button>
+    <button class="nav" data-view="audit">审计日志</button>
+    <button class="nav" data-view="settings">访问策略</button>
+  </nav>
+  <div class="sidebar-foot"><span class="dot"></span> LOCAL CONTROL ONLY
+    <p>No accounts. No billing.<br>No telemetry.</p>
+    <button id="logout" class="text-button">锁定面板</button>
+  </div>
+</aside>
+
+<main>
+<header>
+  <span>Personal workspace <span class="slash">/</span> <b id="breadcrumb">总览</b></span>
+  <span class="local-label">127.0.0.1 <span class="dot"></span></span>
+</header>
+
+<section class="hero">
+  <div>
+    <p class="eyebrow">AUTHORIZED ACCESS / HUMAN IN CONTROL</p>
+    <h1>你的电脑，你来掌控。</h1>
+    <p id="device">正在连接本机服务...</p>
+  </div>
+  <button id="pause" class="danger-outline">暂停远程访问</button>
+</section>
+
+<div class="metrics">
+  <article><span>服务状态</span><strong id="serviceStatus">--</strong><small id="uptime">--</small></article>
+  <article><span>等待本机审批</span><strong id="pendingCount">0</strong><small>只有你能批准操作</small></article>
+  <article><span>授权目录</span><strong id="rootCount">0</strong><small>明确的访问边界</small></article>
+  <article><span>已授权连接</span><strong id="linkedCount">0</strong><small>OAuth + Secure Tunnel</small></article>
+</div>
+
+<section class="view active" id="view-overview">
+  <div class="grid">
+    <article class="panel">
+      <div class="panel-heading"><h2>OpenAI Secure MCP Tunnel</h2><span class="badge">PRIMARY</span></div>
+      <div class="policy-line"><span>Tunnel 状态</span><b id="overviewTunnelStatus">--</b></div>
+      <div class="policy-line"><span>Tunnel ID</span><b id="overviewTunnelId">未配置</b></div>
+      <p class="muted" id="overviewTunnelHint">首次使用请进入“连接授权”，填写 Tunnel ID 与 Runtime API Key。</p>
+      <button class="small" data-view="connections">配置 Secure Tunnel</button>
+    </article>
+    <article class="panel">
+      <h2>安全边界</h2>
+      <div class="policy-line"><span>文件修改</span><b id="writePolicy">需要本机审批</b></div>
+      <div class="policy-line"><span>终端命令</span><b id="terminalPolicy">已关闭</b></div>
+      <div class="policy-line"><span>管理面板</span><b>仅本机 Loopback</b></div>
+      <p class="muted">终端使用当前 Windows 用户权限。授权目录限制文件工具，但不是操作系统终端沙箱。</p>
+    </article>
+  </div>
+  <article class="panel"><div class="panel-heading"><h2>最近活动</h2><span class="badge">LIVE</span></div><div id="recentAudit"></div></article>
+</section>
+
+<section class="view" id="view-requests">
+  <article class="panel">
+    <h2>核对即将执行的操作</h2>
+    <p class="muted">批准后只执行一次。请拒绝不是你主动发起的操作。</p>
+    <div id="approvalList"></div>
+  </article>
+</section>
+
+<section class="view" id="view-connections">
+  <article class="panel">
+    <div class="panel-heading"><h2>OpenAI Secure MCP Tunnel</h2><span class="badge">PRIVATE</span></div>
+    <p class="muted">首次填写后，Tunnel ID 会保存到本机。Runtime API Key 使用当前 Windows 用户的 DPAPI 加密后保存；浏览器和 API 不会读取回明文。</p>
+    <form id="tunnelForm">
+      <label><span>Tunnel ID</span>
+        <input id="tunnelId" autocomplete="off" spellcheck="false" placeholder="tunnel_0123456789abcdef0123456789abcdef" required>
+        <small>格式：tunnel_ + 32 位小写十六进制字符。</small>
+      </label>
+      <label><span>Runtime API Key</span>
+        <input id="tunnelApiKey" type="password" autocomplete="new-password" spellcheck="false" placeholder="首次配置必须输入">
+        <small id="tunnelKeyHint">首次配置必须输入；保存后再次启动可留空。</small>
+      </label>
+      <div class="actions">
+        <button id="tunnelSaveStart" type="submit">保存并启动 Tunnel</button>
+        <button id="tunnelStart" type="button" class="small">启动</button>
+        <button id="tunnelStop" type="button" class="reject">停止</button>
+        <button id="openTunnelUi" type="button" class="text-button">打开 tunnel-client UI</button>
+      </div>
+    </form>
+
+    <div class="endpoint"><code id="secureTunnelEndpoint">--</code></div>
+    <div class="policy-line"><span>运行状态</span><b id="secureTunnelStatus">--</b></div>
+    <div class="policy-line"><span>Runtime API Key</span><b id="secureTunnelKeyStatus">--</b></div>
+    <div class="policy-line"><span>审批模式</span><b id="secureTunnelApproval">--</b></div>
+    <div id="secureTunnelError" class="notice warning" hidden></div>
+
+    <div class="actions">
+      <button id="secureTunnelTrust" class="danger-outline">本次 Tunnel 会话免审批</button>
+      <button id="secureTunnelRestore" class="text-button">恢复逐次审批</button>
+      <button id="forgetTunnelKey" class="text-button">删除已保存 Runtime API Key</button>
+    </div>
+  </article>
+
+  <article class="panel">
+    <h2>OAuth 连接请求</h2>
+    <p class="muted">这是旧的公网 OAuth MCP 接入方式；只有仍在使用 47831 公网入口时才需要处理。</p>
+    <div id="pairList"></div>
+  </article>
+
+  <article class="panel">
+    <h2>OAuth 会话审批策略</h2>
+    <p class="muted">每个 OAuth 授权会话可以独立选择逐次审批或本次会话免审批。</p>
+    <div id="authorizationList"></div>
+  </article>
+
+  <article class="panel danger-panel">
+    <h2>本机服务控制</h2>
+    <p class="muted">撤销 OAuth 授权不会删除 Secure Tunnel 的 Tunnel ID 或 DPAPI 加密密钥。</p>
+    <div class="actions">
+      <button id="revoke" class="danger-outline">撤销全部 OAuth 授权</button>
+      <button id="resetClients" class="text-button">清空 OAuth 客户端注册</button>
+      <button id="shutdownService" class="danger-outline">停止 RDC-X 与 Tunnel</button>
+    </div>
+  </article>
+</section>
+
+<section class="view" id="view-sessions">
+  <article class="panel"><h2>受管理的终端会话</h2><p class="muted">这里列出 RDC-X 创建的终端会话。</p><div id="sessionList"></div></article>
+</section>
+
+<section class="view" id="view-audit">
+  <article class="panel"><h2>本地审计记录</h2><p class="muted">令牌、文件正文和 stdin 正文不会写入审计日志。显示最新 200 条。</p><div id="auditList"></div></article>
+</section>
+
+<section class="view" id="view-settings">
+  <article class="panel">
+    <h2>访问策略</h2>
+    <form id="settingsForm">
+      <label><span>设备名称</span><input id="name" maxlength="80" required></label>
+      <label><span>旧版公网 OAuth MCP HTTPS 源地址</span><input id="publicUrl" type="url" required><small>只在使用旧版公网 47831 接入时需要；不要加 /mcp。</small></label>
+      <label><span>授权目录：每行 rw | 路径 或 ro | 路径</span><textarea id="rootsInput" rows="6" spellcheck="false"></textarea><small>只允许已存在目录。空列表表示禁止全部文件访问。</small></label>
+      <label class="toggle"><input id="writeApproval" type="checkbox"><span>默认要求文件修改逐次审批</span></label>
+      <label class="toggle"><input id="terminalEnabled" type="checkbox"><span>允许终端命令</span></label>
+      <label class="toggle"><input id="systemProcessEnabled" type="checkbox"><span>允许终止任意非关键系统进程</span></label>
+      <label class="toggle"><input id="desktopEnabled" type="checkbox"><span>允许桌面截图、窗口、鼠标与键盘控制</span></label>
+      <label class="toggle"><input id="networkFetchEnabled" type="checkbox"><span>允许读取公网 HTTP/HTTPS 文本</span></label>
+      <div class="notice warning">终端不是操作系统沙箱。批准的命令拥有当前 Windows 用户权限；需要强隔离时使用专用低权限账号或虚拟机。</div>
+      <label><span>允许的 OAuth 回调域名</span><input id="oauthHosts"><small>逗号分隔的精确域名，不支持通配符。</small></label>
+      <button type="submit">保存访问策略</button><small id="saveStatus"></small>
+    </form>
+  </article>
+</section>
+
+<footer>RDC-X 0.2.0 <span>SELF-HOSTED / SINGLE DEVICE / PRIVATE BY DEFAULT</span></footer>
+</main>
+</div>
+<div id="toast" role="status" hidden></div>
+</body>
+</html>

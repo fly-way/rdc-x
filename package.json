@@ -13,7 +13,7 @@
     "start": "node dist/main.js",
     "dev": "tsx src/main.ts",
     "test": "tsx --test test/*.test.ts",
-    "check": "tsc --noEmit",
+    "check": "tsc --noEmit && node --check public/app.js && node --check scripts/dashboard.mjs && node --check scripts/launch.mjs && node --check scripts/doctor.mjs",
     "doctor": "node scripts/doctor.mjs",
     "tunnel": "node scripts/tunnel.mjs"
   },

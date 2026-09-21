@@ -19,6 +19,10 @@ try {
   const remote = await fetch(`http://127.0.0.1:${c.mcpPort}/api/state`); check('Admin not exposed on MCP port', remote.status === 404);
   console.log('Endpoint: ' + admin.endpoint);
   console.log(admin.hasPublicUrl ? 'Public HTTPS origin configured.' : 'Public MCP is local-only.');
-  console.log(c.secureTunnelEnabled ? `Secure MCP Tunnel target enabled: http://127.0.0.1:${c.tunnelPort}/mcp` : 'Secure MCP Tunnel target is disabled. Enable it in the local dashboard before running Start-Secure-Tunnel.cmd.');
+  console.log(c.secureTunnelEnabled ? `Secure MCP Tunnel target enabled: http://127.0.0.1:${c.tunnelPort}/mcp` : 'Secure MCP Tunnel target is not configured yet. Run Start-All.cmd and enter credentials on the Connections page.');
+  if (admin.secureTunnel?.configured) {
+    check('Secure MCP Tunnel credentials stored', admin.secureTunnel.hasApiKey && !!admin.secureTunnel.tunnelId);
+    console.log('Managed tunnel-client: ' + (admin.secureTunnel.ready ? 'ready' : admin.secureTunnel.live ? 'live, not ready' : 'not running'));
+  }
 } catch (e) { check('Runtime checks', false, e.message); }
 process.exitCode = failures ? 1 : 0;

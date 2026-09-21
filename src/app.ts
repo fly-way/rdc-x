@@ -14,6 +14,7 @@ import { DesktopService } from './desktop.js';
 import { UnityService } from './unity.js';
 import { NetworkService } from './network.js';
 import { createMcp } from './tools.js';
+import { TunnelRuntime } from './tunnel-runtime.js';
 
 const SECURE_TUNNEL_OWNER = 'secure-mcp-tunnel';
 const FULL_SCOPES = ['rdc.read', 'rdc.write', 'rdc.exec'];
@@ -25,6 +26,7 @@ export function createApp(base: string) {
   const documents = new DocumentService(state, files.guard); const system = new SystemService();
   const desktop = new DesktopService(state); const unity = new UnityService(state, files.guard); const network = new NetworkService();
   const services = { state, files, approvals, processes, searches, documents, system, desktop, unity, network };
+  const tunnelRuntime = new TunnelRuntime(state, base);
   const mcp = express(); const admin = express(); const tunnelMcp = express();
   let servers: Server[] = []; let active = 0;
   const mcpPort = state.config.mcpPort; const adminPort = state.config.adminPort; const tunnelPort = state.config.tunnelPort;
@@ -140,26 +142,29 @@ export function createApp(base: string) {
   admin.use('/api', (req, res, next) => {
     const token = req.headers['x-rdc-admin'];
     if (typeof token !== 'string' || !sameSecret(token, state.adminToken))
-      return res.status(401).json({ error: 'Local admin key required. Open Dashboard.cmd on this computer.' });
+      return res.status(401).json({ error: 'Local admin key required. Run Start-All.cmd on this computer.' });
     next();
   });
-  admin.get('/api/state', (_req, res) => res.json({
-    config: state.publicConfig(),
-    pairings: auth.listPairs(),
-    approvals: approvals.list(),
-    sessions: processes.list(),
-    audit: [...state.auditTail].reverse(),
-    authorizations: auth.listAuthorizations().map(a => ({ ...a, approvalMode: approvals.mode(a.grantId) })),
-    authorizationCount: auth.listAuthorizations().length,
-    endpoint: auth.resource,
-    hasPublicUrl: new URL(state.config.publicUrl).protocol === 'https:',
-    secureTunnel: {
-      enabled: state.config.secureTunnelEnabled,
-      port: tunnelPort,
-      endpoint: `http://127.0.0.1:${tunnelPort}/mcp`,
-      approvalMode: approvals.mode(SECURE_TUNNEL_OWNER)
-    }
-  }));
+  admin.get('/api/state', async (_req, res) => {
+    const runtime = await tunnelRuntime.status();
+    res.json({
+      config: state.publicConfig(),
+      pairings: auth.listPairs(),
+      approvals: approvals.list(),
+      sessions: processes.list(),
+      audit: [...state.auditTail].reverse(),
+      authorizations: auth.listAuthorizations().map(a => ({ ...a, approvalMode: approvals.mode(a.grantId) })),
+      authorizationCount: auth.listAuthorizations().length,
+      endpoint: auth.resource,
+      hasPublicUrl: new URL(state.config.publicUrl).protocol === 'https:',
+      secureTunnel: {
+        ...runtime,
+        enabled: state.config.secureTunnelEnabled,
+        port: tunnelPort,
+        approvalMode: approvals.mode(SECURE_TUNNEL_OWNER)
+      }
+    });
+  });
   admin.post('/api/pairings/:id', (req, res) => {
     if (typeof req.body?.approve !== 'boolean') throw new Error('approve must be boolean.');
     auth.decide(String(req.params.id), req.body.approve);
@@ -181,6 +186,20 @@ export function createApp(base: string) {
     const mode = req.body?.mode;
     if (mode !== 'default' && mode !== 'trusted') throw new Error('mode must be default or trusted.');
     res.json(approvals.setMode(SECURE_TUNNEL_OWNER, mode));
+  });
+  admin.post('/api/tunnel/configure', async (req, res) => {
+    const tunnelId = typeof req.body?.tunnelId === 'string' ? req.body.tunnelId : '';
+    const runtimeApiKey = typeof req.body?.runtimeApiKey === 'string' ? req.body.runtimeApiKey : undefined;
+    res.json(await tunnelRuntime.configure(tunnelId, runtimeApiKey));
+  });
+  admin.post('/api/tunnel/start', async (_req, res) => {
+    res.json(await tunnelRuntime.start());
+  });
+  admin.post('/api/tunnel/stop', async (_req, res) => {
+    res.json(await tunnelRuntime.stop());
+  });
+  admin.post('/api/tunnel/forget-key', async (_req, res) => {
+    res.json(await tunnelRuntime.forgetKey());
   });
   admin.post('/api/config', async (req, res) => {
     const next = {
@@ -254,6 +273,7 @@ export function createApp(base: string) {
     approvals.cancelAll();
     searches.stopAll();
     await processes.stopAll();
+    await tunnelRuntime.stop();
     await Promise.all(servers.map(s => new Promise<void>(resolve => {
       s.close(() => resolve());
       s.closeAllConnections();
@@ -268,6 +288,7 @@ export function createApp(base: string) {
     mcp,
     admin,
     tunnelMcp,
+    tunnelRuntime,
     stop,
     async listen() {
       const listen = (app: express.Express, port: number) => new Promise<Server>((resolve, reject) => {
@@ -285,6 +306,7 @@ export function createApp(base: string) {
         throw error;
       }
       state.audit('server', 'started', { mcpPort, adminPort, tunnelPort });
+      void tunnelRuntime.autoStart().catch((error: any) => state.audit('secure_tunnel_runtime', 'failed', { error: String(error?.message ?? error).slice(0, 500) }));
       return servers;
     }
   };

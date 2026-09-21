@@ -32,14 +32,14 @@ if errorlevel 1 (
   goto :failed
 )
 
-echo [RDC-X] Starting service...
+echo [RDC-X] Starting RDC-X and opening the Secure Tunnel setup page...
 node scripts\launch.mjs
 if errorlevel 1 goto :show_log
 exit /b 0
 
 :missing_node
 echo [RDC-X] Node.js 22 or newer was not found in PATH.
-echo Install/update Node.js, reopen this window, then run Start.cmd again.
+echo Install/update Node.js, reopen this window, then run Start-All.cmd again.
 goto :failed
 
 :show_log

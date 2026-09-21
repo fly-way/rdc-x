@@ -28,7 +28,7 @@ function launchDetached(command, args) {
 try {
   await adminApi('/state');
   const c = getConfig();
-  const url = `http://127.0.0.1:${c.adminPort}/#key=${encodeURIComponent(getKey())}`;
+  const url = `http://127.0.0.1:${c.adminPort}/#key=${encodeURIComponent(getKey())}&view=connections`;
 
   if (process.platform === 'win32') {
     // Use the Windows URL protocol handler directly. This is more reliable than
@@ -45,6 +45,6 @@ try {
 
   console.log('Opened the local dashboard. The admin key was not printed.');
 } catch (e) {
-  console.error('Dashboard unavailable: ' + e.message + '\nRun Start.cmd first, or open Dashboard.cmd manually.');
+  console.error('Dashboard unavailable: ' + e.message + '\nRun Start-All.cmd on this computer.');
   process.exitCode = 1;
 }
