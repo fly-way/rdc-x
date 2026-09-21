@@ -12,7 +12,7 @@ if %NODE_MAJOR% LSS 22 (
 )
 
 echo [RDC-X] Synchronizing dependencies...
-call npm.cmd install --no-audit --no-fund
+call npm.cmd install --prefer-offline --no-audit --no-fund
 if errorlevel 1 (
   echo [RDC-X] npm install failed.
   goto :failed
