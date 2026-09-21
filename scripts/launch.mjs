@@ -18,6 +18,32 @@ function tailLog(lines = 80) {
 let running = false;
 try { await adminApi('/state'); running = true; } catch {}
 
+if (running) {
+  console.log('[RDC-X] Existing instance detected. Restarting it so the running backend matches the freshly built files...');
+  try {
+    await adminApi('/shutdown', {});
+  } catch (error) {
+    console.error('Could not request shutdown of the existing RDC-X instance: ' + error.message);
+    process.exit(1);
+  }
+
+  for (let attempt = 0; attempt < 60; attempt++) {
+    await new Promise(resolve => setTimeout(resolve, 250));
+    try {
+      await adminApi('/state');
+    } catch {
+      running = false;
+      break;
+    }
+  }
+
+  if (running) {
+    console.error('The previous RDC-X instance did not stop within 15 seconds.');
+    console.error('Close any old RDC-X/tunnel-client process and run Start-All.cmd again.');
+    process.exit(1);
+  }
+}
+
 if (!running) {
   fs.mkdirSync(data, { recursive: true });
   try {
