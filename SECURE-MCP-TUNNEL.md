@@ -1,41 +1,25 @@
 # RDC-X + OpenAI Secure MCP Tunnel
 
-RDC-X manages the OpenAI Secure MCP Tunnel directly from its loopback dashboard.
+OpenAI Secure MCP Tunnel is the required remote transport for the normal RDC-X user workflow.
 
-## Daily workflow
+## Startup gate
 
-On Windows, run only:
+Run:
 
 ```text
 Start-All.cmd
 ```
 
-It starts RDC-X, opens the local dashboard on **Connections**, and automatically restores the managed tunnel when credentials have already been saved.
+RDC-X starts its local service, then opens a dedicated Secure Tunnel sign-in page. The Dashboard remains locked for that RDC-X process until the user provides both:
 
-There is no separate `Start-Secure-Tunnel.cmd`.
+- Tunnel ID
+- Runtime API Key
 
-## First-time setup
+RDC-X then starts the official `tunnel-client` and waits for its readiness endpoint. The Dashboard is entered only after the tunnel reports **Ready**.
 
-1. Install the official OpenAI `tunnel-client`.
-2. Place it at `tools\tunnel-client.exe`, add it to `PATH`, or set `TUNNEL_CLIENT_PATH`.
-3. Run `Start-All.cmd`.
-4. In **Connections -> OpenAI Secure MCP Tunnel**, enter the Tunnel ID and Runtime API Key.
-5. Choose **Save and start Tunnel**.
-6. Wait for the dashboard to report **Ready / 可用**.
+A saved Tunnel ID is prefilled on later runs. The Runtime API Key input uses standard password-manager autocomplete so the browser may fill it, but the user-facing startup gate still requires a Runtime API Key for each fresh RDC-X process.
 
-The tunnel target is:
-
-```text
-http://127.0.0.1:47833/mcp
-```
-
-The official `tunnel-client` health/admin UI is available while running at:
-
-```text
-http://127.0.0.1:47834/ui
-```
-
-## Credential persistence
+## Credential storage
 
 Tunnel ID:
 
@@ -43,40 +27,54 @@ Tunnel ID:
 .rdc\secure-tunnel.json
 ```
 
-Runtime API Key on Windows:
+DPAPI-protected Runtime API Key:
 
 ```text
 .rdc\secure-tunnel-key.dpapi
 ```
 
-RDC-X encrypts the Runtime API Key with Windows DPAPI using `CurrentUser`. The dashboard never reads the saved plaintext back. The secret is decrypted only when RDC-X needs to launch `tunnel-client` for the current Windows user.
-
-The Connections page can delete the stored Runtime API Key at any time.
+On Windows, RDC-X uses the current user's DPAPI context. The plaintext Runtime API Key is not exposed by the Dashboard API and is not written to RDC-X logs.
 
 ## Architecture
 
 ```text
-ChatGPT / supported OpenAI surface
-        |
-OpenAI Secure MCP Tunnel
-        |
+Start-All.cmd
+    |
+Local Secure Tunnel sign-in
+    |
 official tunnel-client
-        |
+    |
+OpenAI Secure MCP Tunnel
+    |
 127.0.0.1:47833/mcp
-        |
-RDC-X
+    |
+RDC-X tools
 ```
 
-Port 47833 is loopback-only and must not be exposed through a public reverse proxy.
+The Secure Tunnel target stays loopback-only. Port 47833 must not be exposed through Cloudflare, a public reverse proxy, router port forwarding, or another ingress.
 
-## Approval behavior
+The official tunnel-client health/admin UI is available while running at:
 
-Secure Tunnel calls retain RDC-X local approval controls. The owner may temporarily switch the Secure Tunnel connection to trusted mode in the local dashboard. That trust is memory-only and does not persist across an RDC-X restart.
+```text
+http://127.0.0.1:47834/ui
+```
+
+## Dashboard behavior
+
+Once the tunnel is Ready, RDC-X unlocks the Dashboard. If readiness is later lost, the web UI returns to the Secure Tunnel gate.
+
+The Connection page can:
+
+- open tunnel-client UI;
+- switch between per-action approval and temporary session-trusted mode;
+- disconnect the tunnel and return to the credential gate.
+
+Temporary trusted approval state is memory-only and is cleared on RDC-X restart.
 
 ## ChatGPT-side permissions
 
-Secure MCP Tunnel is transport only. ChatGPT workspace permissions still apply. The target workspace must allow the relevant custom/developer MCP app and the app must use the same tunnel. An authorized workspace operator may need to create or publish that app once.
+Secure MCP Tunnel is transport only. ChatGPT workspace permissions still apply. The target workspace must allow the relevant custom/developer MCP app and that app must use the same tunnel.
 
 ## Legacy listener
 
-The OAuth-protected MCP listener on port 47831 remains available for advanced/manual compatibility use. It is separate from the Secure Tunnel listener.
+The OAuth-protected MCP listener on port 47831 remains available for advanced compatibility use, but it is not part of the normal RDC-X Dashboard login flow and does not bypass the mandatory Secure Tunnel gate.
