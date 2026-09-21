@@ -185,6 +185,11 @@ export class ProcessService {
     if (!item.pid || item.child.exitCode !== null) return;
     clearTimeout(item.timer);
 
+    const closed = new Promise<void>(resolve => {
+      if (item.child.exitCode !== null) resolve();
+      else item.child.once('close', () => resolve());
+    });
+
     if (process.platform === 'win32') {
       await new Promise<void>(resolve => {
         const killer = spawn('taskkill.exe', ['/PID', String(item.pid), '/T', '/F'], {
@@ -204,6 +209,13 @@ export class ProcessService {
         item.child.kill('SIGKILL');
       }
     }
+
+    // Do not report a stopped tree before Node has observed the child close.
+    // This also lets stdout/stderr drain and prevents Windows temp-directory cleanup races.
+    await Promise.race([
+      closed,
+      new Promise<void>(resolve => setTimeout(resolve, 5000))
+    ]);
   }
 
   async stop(id: string, owner: string) {
