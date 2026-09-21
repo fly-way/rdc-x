@@ -14,8 +14,11 @@ try {
   const rejected = await fetch(`http://127.0.0.1:${c.mcpPort}/mcp`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
   check('Unauthenticated MCP denied', rejected.status === 401);
   const admin = await adminApi('/state'); check('Local admin authentication', !!admin.config);
+  const tunnelHealth = await fetch(`http://127.0.0.1:${c.tunnelPort}/health`, { signal: AbortSignal.timeout(3000) });
+  check('Secure MCP Tunnel listener', tunnelHealth.ok, `127.0.0.1:${c.tunnelPort}`);
   const remote = await fetch(`http://127.0.0.1:${c.mcpPort}/api/state`); check('Admin not exposed on MCP port', remote.status === 404);
   console.log('Endpoint: ' + admin.endpoint);
-  console.log(admin.hasPublicUrl ? 'HTTPS origin configured; verify tunnel connectivity separately.' : 'Local-only. ChatGPT linking needs an HTTPS route or a configured Secure MCP Tunnel.');
+  console.log(admin.hasPublicUrl ? 'Public HTTPS origin configured.' : 'Public MCP is local-only.');
+  console.log(c.secureTunnelEnabled ? `Secure MCP Tunnel target enabled: http://127.0.0.1:${c.tunnelPort}/mcp` : 'Secure MCP Tunnel target is disabled. Enable it in the local dashboard before running Start-Secure-Tunnel.cmd.');
 } catch (e) { check('Runtime checks', false, e.message); }
 process.exitCode = failures ? 1 : 0;
