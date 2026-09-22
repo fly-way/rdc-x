@@ -145,8 +145,9 @@ await test('HTTP, OAuth and real MCP SDK integration', async t => {
 
       app.state.config.terminalEnabled = true;
       const started: any = await client.callTool({ name: 'start_process', arguments: { command: "Write-Output 'native-process-ok'", timeoutSeconds: 10 } });
+      assert.equal(started.isError, undefined, started.content?.[0]?.text);
       const session = JSON.parse(started.content[0].text);
-      assert.equal(typeof session.sessionId, 'string');
+      assert.equal(typeof session.sessionId, 'string', started.content?.[0]?.text);
       await new Promise(resolve => setTimeout(resolve, 150));
       const output: any = await client.callTool({ name: 'read_process_output', arguments: { sessionId: session.sessionId, offset: 0, length: 20000 } });
       assert.match(JSON.parse(output.content[0].text).output, /native-process-ok/);
