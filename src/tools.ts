@@ -95,7 +95,7 @@ export function createMcp(services: Services, owner: string, scopes: string[], a
     version: RDCX_VERSION,
     toolSchemaVersion: RDCX_TOOL_SCHEMA_VERSION,
     platform: process.platform,
-    groups: ['files','search','terminal','processes','desktop','network','pdf','excel','docx','unity','audit'],
+    groups: ['files','search','terminal','processes','desktop','network','pdf','excel','docx','unity','diagnostics','audit'],
     policy: {
       terminal: state.config.terminalEnabled,
       systemProcessControl: state.config.systemProcessControlEnabled,
@@ -154,6 +154,10 @@ export function createMcp(services: Services, owner: string, scopes: string[], a
   })) }));
 
   register('get_file_info', 'Read file or directory type, byte size and timestamps.', { path: p }, 'rdc.read', a => files.info(a.path));
+  register('hash_file', 'Compute a cryptographic hash for one authorized regular file without loading it all into memory.', {
+    path: p, algorithm: z.enum(['sha256','sha512']).default('sha256'),
+    maxBytes: z.number().int().min(1).max(4 * 1024 * 1024 * 1024).default(512 * 1024 * 1024)
+  }, 'rdc.read', a => files.hash(a.path, a.algorithm, a.maxBytes));
   register('read_image', 'Read a bounded PNG/JPEG/GIF/WebP image as MCP image content.', { path: p }, 'rdc.read', a => files.image(a.path));
 
   register('read_url', 'Fetch bounded public HTTP/HTTPS text without credentials. Private/local network targets are blocked.', {
@@ -238,6 +242,10 @@ export function createMcp(services: Services, owner: string, scopes: string[], a
   register('get_more_search_results', 'Read paginated results for one search.', {
     searchId: sid, offset: z.number().int().min(0).default(0), length: z.number().int().min(1).max(500).default(100)
   }, 'rdc.read', a => searches.get(a.searchId, owner, a.offset, a.length));
+  register('wait_search', 'Wait for a search to finish or until timeout, then return one result page.', {
+    searchId: sid, timeoutMs: z.number().int().min(0).max(120000).default(30000),
+    offset: z.number().int().min(0).default(0), length: z.number().int().min(1).max(500).default(100)
+  }, 'rdc.read', a => searches.wait(a.searchId, owner, a.timeoutMs, a.offset, a.length));
   register('stop_search', 'Stop one search created by this authorization.', { searchId: sid }, 'rdc.read', a => searches.stop(a.searchId, owner));
   register('list_searches', 'List searches created by this authorization.', {}, 'rdc.read', () => ({ searches: searches.list(owner) }));
 
@@ -252,6 +260,10 @@ export function createMcp(services: Services, owner: string, scopes: string[], a
   register('read_process_output', 'Read character-paginated output from a managed terminal session.', {
     sessionId: sid, offset: z.number().int().min(0).default(0), length: z.number().int().min(1).max(100000).default(20000)
   }, 'rdc.exec', a => processes.read(a.sessionId, owner, a.offset, a.length));
+  register('wait_process', 'Wait for a managed session to exit or until timeout, then return an output snapshot.', {
+    sessionId: sid, timeoutMs: z.number().int().min(0).max(120000).default(30000),
+    offset: z.number().int().min(0).default(0), length: z.number().int().min(1).max(100000).default(20000)
+  }, 'rdc.exec', a => processes.wait(a.sessionId, owner, a.timeoutMs, a.offset, a.length));
   mutate('interact_with_process', 'Send exact stdin text to an interactive managed session.', {
     sessionId: sid, input: z.string().max(32000)
   }, a => processes.input(a.sessionId, owner, a.input), 'exec');
@@ -259,6 +271,8 @@ export function createMcp(services: Services, owner: string, scopes: string[], a
   mutate('force_terminate', 'Stop a managed process tree created by this authorization.', { sessionId: sid }, a => processes.stop(a.sessionId, owner), 'exec');
 
   register('get_system_info', 'Read operating-system, CPU and memory information.', {}, 'rdc.read', () => system.info());
+  register('run_diagnostics', 'Run non-destructive RDC-X environment checks for roots, shells, Git, tunnel-client and policy state.', {}, 'rdc.read',
+    async () => ({ version: RDCX_VERSION, toolSchemaVersion: RDCX_TOOL_SCHEMA_VERSION, ...(await system.diagnostics(state, state.base)) }));
   register('list_processes', 'List system processes and resource usage.', { limit: z.number().int().min(1).max(1000).default(200) }, 'rdc.read', a => system.listProcesses(a.limit));
   execMutation('kill_process', 'Terminate an arbitrary non-critical OS process tree by PID.', { pid: z.number().int().positive() },
     a => system.killProcess(a.pid),
@@ -288,6 +302,10 @@ export function createMcp(services: Services, owner: string, scopes: string[], a
   register('list_windows', 'List visible top-level Windows application windows.', {}, 'rdc.read', () => {
     if (!state.config.desktopControlEnabled) throw new Error('Desktop control is disabled.');
     return desktop.listWindows();
+  });
+  register('get_window_info', 'Read one visible window title, handle and absolute bounds by process ID.', { pid: z.number().int().positive() }, 'rdc.read', a => {
+    if (!state.config.desktopControlEnabled) throw new Error('Desktop control is disabled.');
+    return desktop.getWindowInfo(a.pid);
   });
   register('get_cursor_position', 'Read the current mouse cursor coordinates.', {}, 'rdc.read', () => {
     if (!state.config.desktopControlEnabled) throw new Error('Desktop control is disabled.');
