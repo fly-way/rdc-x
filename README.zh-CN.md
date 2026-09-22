@@ -2,21 +2,22 @@
 
 RDC-X 是一个面向个人/私有环境的自托管 MCP 网关，用于让 ChatGPT 通过受控接口访问一台已授权的 Windows 电脑。
 
-当前版本：**0.3.0**
+当前版本：**0.3.1**
 
 推荐连接方式是 **OpenAI Secure MCP Tunnel**。RDC-X 的 MCP 服务只监听本机 loopback，由 OpenAI 官方 `tunnel-client` 主动建立到 OpenAI 的出站连接，不需要直接向公网暴露本机 MCP 端口。
 
 ## 主要功能
 
-RDC-X v0.3 提供 **90+ 个原生 MCP 工具**，主要包括：
+RDC-X v0.3.1 提供 **95+ 个原生 MCP 工具**，主要包括：
 
-- 文件和目录：列出、读取、写入、精确编辑、目录树复制/移动、字面量/正则搜索、恢复与软删除；
-- 终端和受管理进程会话，可按平台选择 PowerShell、pwsh、cmd、sh/bash；
+- 文件和目录：列出、读取、写入、精确编辑、目录树复制/移动、哈希校验、字面量/正则搜索、恢复与软删除；
+- 终端和受管理进程会话，可按平台选择 PowerShell、pwsh、cmd、sh/bash，并支持等待进程完成；
 - Windows 桌面：显示器/窗口/区域截图、窗口聚焦、鼠标位置、鼠标/键盘/滚轮和剪贴板；
 - 系统信息和受控进程终止；
 - PDF、DOCX、XLSX 的读取与编辑，包括 PDF 合并、删页、抽页、插入；
 - 带私网/SSRF 防护的公网 HTTP/HTTPS 文本读取；
 - Unity Editor：项目发现、Console、Hierarchy、Scene、Game View、Play Mode、GameObject、Transform、Component、序列化属性、AssetDatabase 搜索、Prefab 工作流等；
+- 运行环境自检，可检查授权目录、Shell、Git 和 tunnel-client；
 - 本机审批、审计日志和访问策略。
 
 RDC-X 主要用于单台已授权电脑的个人使用，不包含账号系统、订阅、付费逻辑或遥测。
