@@ -15,6 +15,7 @@ import { UnityService } from './unity.js';
 import { NetworkService } from './network.js';
 import { createMcp } from './tools.js';
 import { TunnelRuntime } from './tunnel-runtime.js';
+import { RDCX_VERSION } from './version.js';
 
 const SECURE_TUNNEL_OWNER = 'secure-mcp-tunnel';
 const FULL_SCOPES = ['rdc.read', 'rdc.write', 'rdc.exec'];
@@ -113,7 +114,7 @@ export function createApp(base: string) {
     }
   }
 
-  mcp.get('/health', (_req, res) => res.json({ name: 'RDC-X', version: '0.2.0', status: state.paused ? 'paused' : 'running' }));
+  mcp.get('/health', (_req, res) => res.json({ name: 'RDC-X', version: RDCX_VERSION, status: state.paused ? 'paused' : 'running' }));
   auth.mount(mcp);
   mcp.all('/mcp', async (req, res) => {
     let grant;
@@ -131,7 +132,7 @@ export function createApp(base: string) {
 
   tunnelMcp.get('/health', (_req, res) => res.json({
     name: 'RDC-X Secure MCP Tunnel listener',
-    version: '0.2.0',
+    version: RDCX_VERSION,
     enabled: state.config.secureTunnelEnabled,
     status: state.paused ? 'paused' : 'running'
   }));

@@ -66,6 +66,14 @@ public static class RDCXBridge {
         case "set_active": SetActive(JsonUtility.FromJson<BoolPayload>(req.argument)); res.message="Active state updated"; break;
         case "select_object": SelectObject(req.argument); res.message="Object selected"; break;
         case "add_component": AddComponent(JsonUtility.FromJson<ComponentPayload>(req.argument)); res.message="Component added"; break;
+        case "remove_component": RemoveComponent(JsonUtility.FromJson<ComponentPayload>(req.argument)); res.message="Component removed"; break;
+        case "serialized_properties": res.dataJson = SerializedProperties(JsonUtility.FromJson<ComponentPayload>(req.argument)); break;
+        case "set_serialized_property": SetSerializedProperty(JsonUtility.FromJson<PropertyPayload>(req.argument)); res.message="Serialized property updated"; break;
+        case "find_assets": res.dataJson = FindAssets(JsonUtility.FromJson<AssetSearchPayload>(req.argument)); break;
+        case "instantiate_prefab": res.dataJson = InstantiatePrefab(JsonUtility.FromJson<PrefabPayload>(req.argument)); break;
+        case "save_prefab": res.dataJson = SavePrefab(JsonUtility.FromJson<PrefabSavePayload>(req.argument)); break;
+        case "duplicate_game_object": res.dataJson = DuplicateObject(JsonUtility.FromJson<DuplicatePayload>(req.argument)); break;
+        case "unpack_prefab": UnpackPrefab(JsonUtility.FromJson<UnpackPayload>(req.argument)); res.message="Prefab unpacked"; break;
         default: throw new Exception("Unknown action: "+req.action);
       }
     } catch(Exception e) { res.ok=false; res.message=e.ToString(); }
@@ -132,6 +140,110 @@ public static class RDCXBridge {
     if(found==null||!typeof(Component).IsAssignableFrom(found)||found==typeof(Transform)) throw new Exception("Component type not found or not addable: "+p.type);
     Undo.AddComponent(go,found); EditorSceneManager.MarkSceneDirty(go.scene);
   }
+  static Component FindComponent(GameObject go, string typeName) {
+    if(String.IsNullOrWhiteSpace(typeName)) throw new Exception("Component type is required");
+    foreach(var c in go.GetComponents<Component>()) {
+      if(c==null) continue; var t=c.GetType();
+      if(String.Equals(t.FullName,typeName,StringComparison.OrdinalIgnoreCase)||String.Equals(t.Name,typeName,StringComparison.OrdinalIgnoreCase)) return c;
+    }
+    throw new Exception("Component not found: "+typeName);
+  }
+  static void RemoveComponent(ComponentPayload p) {
+    if(p==null) throw new Exception("Invalid component payload"); var go=FindObject(p.path); var c=FindComponent(go,p.type);
+    if(c is Transform) throw new Exception("Transform cannot be removed");
+    Undo.DestroyObjectImmediate(c); EditorSceneManager.MarkSceneDirty(go.scene);
+  }
+  static string PropertyValue(SerializedProperty p) {
+    switch(p.propertyType) {
+      case SerializedPropertyType.Integer: return p.intValue.ToString(CultureInfo.InvariantCulture);
+      case SerializedPropertyType.Boolean: return p.boolValue ? "true" : "false";
+      case SerializedPropertyType.Float: return p.floatValue.ToString(CultureInfo.InvariantCulture);
+      case SerializedPropertyType.String: return p.stringValue ?? "";
+      case SerializedPropertyType.Enum: return p.enumValueIndex.ToString(CultureInfo.InvariantCulture);
+      case SerializedPropertyType.ObjectReference:
+        if(p.objectReferenceValue==null) return "";
+        var asset=AssetDatabase.GetAssetPath(p.objectReferenceValue); return String.IsNullOrEmpty(asset)?p.objectReferenceValue.name:asset;
+      case SerializedPropertyType.Vector2: var v2=p.vector2Value; return v2.x.ToString(CultureInfo.InvariantCulture)+","+v2.y.ToString(CultureInfo.InvariantCulture);
+      case SerializedPropertyType.Vector3: var v3=p.vector3Value; return v3.x.ToString(CultureInfo.InvariantCulture)+","+v3.y.ToString(CultureInfo.InvariantCulture)+","+v3.z.ToString(CultureInfo.InvariantCulture);
+      case SerializedPropertyType.Vector4: var v4=p.vector4Value; return v4.x.ToString(CultureInfo.InvariantCulture)+","+v4.y.ToString(CultureInfo.InvariantCulture)+","+v4.z.ToString(CultureInfo.InvariantCulture)+","+v4.w.ToString(CultureInfo.InvariantCulture);
+      case SerializedPropertyType.Color: var c=p.colorValue; return c.r.ToString(CultureInfo.InvariantCulture)+","+c.g.ToString(CultureInfo.InvariantCulture)+","+c.b.ToString(CultureInfo.InvariantCulture)+","+c.a.ToString(CultureInfo.InvariantCulture);
+      default: return "";
+    }
+  }
+  static string SerializedProperties(ComponentPayload p) {
+    if(p==null) throw new Exception("Invalid component payload"); var go=FindObject(p.path); var component=FindComponent(go,p.type);
+    var so=new SerializedObject(component); var iterator=so.GetIterator(); var result=new PropertyList(); bool enter=true;
+    while(iterator.NextVisible(enter)) {
+      enter=false; result.items.Add(new PropertyInfo { path=iterator.propertyPath, type=iterator.propertyType.ToString(), value=PropertyValue(iterator), editable=iterator.propertyPath!="m_Script" });
+    }
+    return JsonUtility.ToJson(result);
+  }
+  static float ParseFloat(string value) { return Single.Parse(value,CultureInfo.InvariantCulture); }
+  static float[] ParseNumbers(string value,int count) {
+    var parts=(value??"").Split(','); if(parts.Length!=count) throw new Exception("Expected "+count+" comma-separated numbers");
+    var values=new float[count]; for(int i=0;i<count;i++) values[i]=ParseFloat(parts[i]); return values;
+  }
+  static void SetSerializedProperty(PropertyPayload p) {
+    if(p==null||String.IsNullOrWhiteSpace(p.property)) throw new Exception("Invalid property payload");
+    var go=FindObject(p.path); var component=FindComponent(go,p.component); var so=new SerializedObject(component); so.Update();
+    var prop=so.FindProperty(p.property); if(prop==null) throw new Exception("Serialized property not found: "+p.property);
+    if(prop.propertyPath=="m_Script") throw new Exception("m_Script is read-only");
+    Undo.RecordObject(component,"RDC-X property");
+    switch(prop.propertyType) {
+      case SerializedPropertyType.Integer: prop.intValue=Int32.Parse(p.value,CultureInfo.InvariantCulture); break;
+      case SerializedPropertyType.Boolean: prop.boolValue=Boolean.Parse(p.value); break;
+      case SerializedPropertyType.Float: prop.floatValue=ParseFloat(p.value); break;
+      case SerializedPropertyType.String: prop.stringValue=p.value??""; break;
+      case SerializedPropertyType.Enum: prop.enumValueIndex=Int32.Parse(p.value,CultureInfo.InvariantCulture); break;
+      case SerializedPropertyType.Vector2: var v2=ParseNumbers(p.value,2); prop.vector2Value=new Vector2(v2[0],v2[1]); break;
+      case SerializedPropertyType.Vector3: var v3=ParseNumbers(p.value,3); prop.vector3Value=new Vector3(v3[0],v3[1],v3[2]); break;
+      case SerializedPropertyType.Vector4: var v4=ParseNumbers(p.value,4); prop.vector4Value=new Vector4(v4[0],v4[1],v4[2],v4[3]); break;
+      case SerializedPropertyType.Color: var co=ParseNumbers(p.value,4); prop.colorValue=new Color(co[0],co[1],co[2],co[3]); break;
+      case SerializedPropertyType.ObjectReference:
+        if(String.IsNullOrWhiteSpace(p.value)) prop.objectReferenceValue=null;
+        else if(p.value.StartsWith("Assets/")) prop.objectReferenceValue=AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(p.value);
+        else prop.objectReferenceValue=FindObject(p.value);
+        break;
+      default: throw new Exception("Unsupported serialized property type: "+prop.propertyType);
+    }
+    so.ApplyModifiedProperties(); EditorUtility.SetDirty(component); EditorSceneManager.MarkSceneDirty(go.scene);
+  }
+  static string FindAssets(AssetSearchPayload p) {
+    if(p==null) throw new Exception("Invalid asset search payload"); var limit=Mathf.Clamp(p.limit,1,500); string[] folders=p.folders;
+    if(folders!=null) foreach(var f in folders) if(String.IsNullOrWhiteSpace(f)||!f.StartsWith("Assets")) throw new Exception("Asset search folders must be under Assets/");
+    var guids=(folders!=null&&folders.Length>0)?AssetDatabase.FindAssets(p.filter??"",folders):AssetDatabase.FindAssets(p.filter??"");
+    var result=new StringList(); for(int i=0;i<guids.Length&&result.items.Count<limit;i++) result.items.Add(AssetDatabase.GUIDToAssetPath(guids[i]));
+    return JsonUtility.ToJson(result);
+  }
+  static string InstantiatePrefab(PrefabPayload p) {
+    if(p==null||String.IsNullOrWhiteSpace(p.assetPath)||!p.assetPath.StartsWith("Assets/")) throw new Exception("A prefab Assets/ path is required");
+    var asset=AssetDatabase.LoadAssetAtPath<GameObject>(p.assetPath); if(asset==null) throw new Exception("Prefab not found: "+p.assetPath);
+    var go=(GameObject)PrefabUtility.InstantiatePrefab(asset); Undo.RegisterCreatedObjectUndo(go,"RDC-X instantiate prefab");
+    if(!String.IsNullOrEmpty(p.parent)) go.transform.SetParent(FindObject(p.parent).transform,false);
+    if(!String.IsNullOrWhiteSpace(p.name)) go.name=p.name; Selection.activeGameObject=go; EditorSceneManager.MarkSceneDirty(go.scene);
+    return JsonUtility.ToJson(new PathData { path=ObjectPath(go.transform) });
+  }
+  static string SavePrefab(PrefabSavePayload p) {
+    if(p==null||String.IsNullOrWhiteSpace(p.assetPath)||!p.assetPath.StartsWith("Assets/")||!p.assetPath.EndsWith(".prefab",StringComparison.OrdinalIgnoreCase)) throw new Exception("A destination Assets/*.prefab path is required");
+    var go=FindObject(p.path); var projectRoot=Directory.GetParent(Application.dataPath).FullName; var absolute=Path.Combine(projectRoot,p.assetPath.Replace('/',Path.DirectorySeparatorChar));
+    Directory.CreateDirectory(Path.GetDirectoryName(absolute)); bool success; var saved=PrefabUtility.SaveAsPrefabAssetAndConnect(go,p.assetPath,InteractionMode.UserAction,out success);
+    if(!success||saved==null) throw new Exception("Prefab save failed"); AssetDatabase.SaveAssets();
+    return JsonUtility.ToJson(new PathData { path=p.assetPath });
+  }
+  static string DuplicateObject(DuplicatePayload p) {
+    if(p==null) throw new Exception("Invalid duplicate payload"); var source=FindObject(p.path); var go=UnityEngine.Object.Instantiate(source);
+    Undo.RegisterCreatedObjectUndo(go,"RDC-X duplicate GameObject");
+    if(!String.IsNullOrEmpty(p.parent)) go.transform.SetParent(FindObject(p.parent).transform,false); else go.transform.SetParent(source.transform.parent,false);
+    go.name=String.IsNullOrWhiteSpace(p.name)?source.name+" Copy":p.name; Selection.activeGameObject=go; EditorSceneManager.MarkSceneDirty(go.scene);
+    return JsonUtility.ToJson(new PathData { path=ObjectPath(go.transform) });
+  }
+  static void UnpackPrefab(UnpackPayload p) {
+    if(p==null) throw new Exception("Invalid unpack payload"); var go=FindObject(p.path); var root=PrefabUtility.GetOutermostPrefabInstanceRoot(go);
+    if(root==null) throw new Exception("GameObject is not part of a prefab instance");
+    PrefabUtility.UnpackPrefabInstance(root,p.completely?PrefabUnpackMode.Completely:PrefabUnpackMode.OutermostRoot,InteractionMode.UserAction);
+    EditorSceneManager.MarkSceneDirty(root.scene);
+  }
+
 }
 #endif
 `;

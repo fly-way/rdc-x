@@ -18,6 +18,8 @@ await test('expanded capabilities', async t => {
       assert.equal(pending.status,'approval_required'); assert.equal(ran,0);
       approvals.setMode('grant-b','trusted');
       assert.equal(await approvals.run('grant-b','write_file',{path:'y'},async()=>++ran,true),1);
+      const strict:any=await approvals.run('grant-b','set_config_value',{key:'roots'},async()=>++ran,true,false);
+      assert.equal(strict.status,'approval_required'); assert.equal(ran,1);
       assert.equal(approvals.mode('grant-a'),'default'); assert.equal(approvals.mode('grant-b'),'trusted');
       approvals.resetSessionTrust(); assert.equal(approvals.mode('grant-b'),'default');
     } finally { f.clean(); }
@@ -35,6 +37,8 @@ await test('expanded capabilities', async t => {
       assert.equal(trimmed.pages,1);
       const pdf:any=await docs.readPdf('trimmed.pdf',1,5);
       assert.equal(pdf.pageCount,1); assert.match(pdf.pages[0].text,/One|alpha/);
+      const extracted:any=await docs.extractPdfPages('merged.pdf','extracted.pdf',[2,1]); assert.equal(extracted.pages,2);
+      const inserted:any=await docs.insertPdf('one.pdf','two.pdf','inserted.pdf',1); assert.equal(inserted.pages,2);
 
       await docs.writeExcel('book.xlsx',[['Name','Value'],['A',1]],'Data');
       let excel:any=await docs.readExcel('book.xlsx','Data','A1:B2',10,10);
@@ -67,7 +71,7 @@ await test('expanded capabilities', async t => {
       const files=new FileService(f.state); const unity=new UnityService(f.state,files.guard);
       const installed:any=await unity.installBridge(project);
       const source=await fs.readFile(installed.path,'utf8');
-      for(const action of ['set_transform','create_game_object','delete_game_object','set_active','select_object','add_component'])
+      for(const action of ['set_transform','create_game_object','delete_game_object','set_active','select_object','add_component','remove_component','serialized_properties','set_serialized_property','find_assets','instantiate_prefab','save_prefab','duplicate_game_object','unpack_prefab'])
         assert.match(source,new RegExp(action));
       const info:any=await unity.info(project); assert.equal(info.bridgeInstalled,true);
     } finally { f.clean(); }

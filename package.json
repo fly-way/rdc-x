@@ -1,9 +1,9 @@
 {
   "name": "rdc-x",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
-  "description": "Personal, consent-first remote computer MCP server",
+  "description": "Local-first Windows computer MCP server for ChatGPT with files, terminal, desktop, documents, Unity and Secure MCP Tunnel",
   "engines": {
     "node": ">=22"
   },

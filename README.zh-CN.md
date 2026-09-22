@@ -2,21 +2,21 @@
 
 RDC-X 是一个面向个人/私有环境的自托管 MCP 网关，用于让 ChatGPT 通过受控接口访问一台已授权的 Windows 电脑。
 
-当前版本：**0.2.0**
+当前版本：**0.3.0**
 
 推荐连接方式是 **OpenAI Secure MCP Tunnel**。RDC-X 的 MCP 服务只监听本机 loopback，由 OpenAI 官方 `tunnel-client` 主动建立到 OpenAI 的出站连接，不需要直接向公网暴露本机 MCP 端口。
 
 ## 主要功能
 
-RDC-X 当前提供 60+ 个 MCP 工具，主要包括：
+RDC-X v0.3 提供 **90+ 个原生 MCP 工具**，主要包括：
 
-- 文件和目录：列出、读取、写入、编辑、移动、搜索、备份、恢复、软删除；
-- 终端和受管理进程会话；
-- Windows 桌面截图、窗口聚焦、鼠标、键盘、剪贴板；
+- 文件和目录：列出、读取、写入、精确编辑、目录树复制/移动、字面量/正则搜索、恢复与软删除；
+- 终端和受管理进程会话，可按平台选择 PowerShell、pwsh、cmd、sh/bash；
+- Windows 桌面：显示器/窗口/区域截图、窗口聚焦、鼠标位置、鼠标/键盘/滚轮和剪贴板；
 - 系统信息和受控进程终止；
-- PDF、DOCX、XLSX 的读取和编辑；
+- PDF、DOCX、XLSX 的读取与编辑，包括 PDF 合并、删页、抽页、插入；
 - 带私网/SSRF 防护的公网 HTTP/HTTPS 文本读取；
-- Unity Editor：项目发现、Console、Hierarchy、Scene、Selection、Game View、Play Mode、GameObject、Transform、Component 等；
+- Unity Editor：项目发现、Console、Hierarchy、Scene、Game View、Play Mode、GameObject、Transform、Component、序列化属性、AssetDatabase 搜索、Prefab 工作流等；
 - 本机审批、审计日志和访问策略。
 
 RDC-X 主要用于单台已授权电脑的个人使用，不包含账号系统、订阅、付费逻辑或遥测。
@@ -201,11 +201,13 @@ ro | F:\Reference
 
 如果授权目录列表为空，则禁止全部文件访问。
 
+如果 RDC-X 工程自身位于明确授权的目录内，也允许通过 RDC-X 读取和修改自身源码。`.rdc` 私有运行状态、常见凭据文件/目录以及正在使用的 `tools\\tunnel-client.exe` 仍会被保护。
+
 ### 审批模式
 
 Secure Tunnel 默认可以对受保护的修改操作使用逐次审批。
 
-本机用户也可以临时开启“本次 Tunnel 会话免审批”。这个信任状态只保存在内存中，RDC-X 重启后会自动恢复。
+本机用户也可以临时开启“本次 Tunnel 会话免审批”。这个信任状态只保存在内存中，RDC-X 重启后会自动恢复。即使处于免审批模式，通过 `set_config_value` 修改远程访问策略仍然必须经过本机明确审批。
 
 ### 终端安全
 
@@ -224,6 +226,8 @@ Secure MCP Tunnel 负责连接传输，但 ChatGPT 工作区权限仍然有效�
 如果当前成员没有创建或发布 App 的权限，需要由有权限的工作区管理员或其他被授权人员完成。
 
 正常重启 Windows 后，不需要重新创建 ChatGPT App，也不需要重新创建 OpenAI Tunnel 资源。
+
+当升级跨越 RDC-X **工具 Schema 版本**时，需要在 ChatGPT 中刷新/重新配置 App Actions，让 ChatGPT 获取最新原生工具定义。v0.3 不再保留旧 Desktop Commander 参数兼容层。
 
 ## 更新 RDC-X
 
@@ -284,6 +288,7 @@ Start-All.cmd          Windows 主启动入口
 
 - [English README](README.md)
 - [Secure MCP Tunnel 说明](SECURE-MCP-TUNNEL.md)
+- [与 Remote Desktop Commander 的能力对照](docs/REMOTE-DESKTOP-COMMANDER-PARITY.md)
 
 外部参考：
 
