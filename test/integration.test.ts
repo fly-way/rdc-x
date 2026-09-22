@@ -136,6 +136,38 @@ await test('HTTP, OAuth and real MCP SDK integration', async t => {
       await post(local + '/api/tunnel/approval-mode', { mode: 'default' }, f.key);
     }
   });
+  await t.test('legacy frozen app arguments remain compatible', async () => {
+    f.state.saveConfig({ ...f.state.config, terminalEnabled: true });
+    const changed = await post(local + '/api/tunnel/approval-mode', { mode: 'trusted' }, f.key);
+    assert.equal(changed.status, 200);
+    const client = new Client({ name: 'secure-tunnel-legacy-schema-test', version: '1' });
+    await client.connect(new StreamableHTTPClientTransport(new URL(tunnel + '/mcp')));
+    try {
+      const created: any = await client.callTool({ name: 'write_file', arguments: { path: 'legacy.txt', content: 'one', mode: 'create' } });
+      assert.equal(created.isError, undefined);
+      const rewritten: any = await client.callTool({ name: 'write_file', arguments: { path: 'legacy.txt', content: 'two', mode: 'rewrite' } });
+      assert.equal(rewritten.isError, undefined);
+      assert.equal((await app.files.text('legacy.txt')).text, 'two');
+
+      const search: any = await client.callTool({ name: 'start_search', arguments: { path: '.', pattern: 'legacy.txt', searchType: 'files', maxResults: 10 } });
+      const searchResult = JSON.parse(search.content[0].text);
+      assert.equal(typeof searchResult.searchId, 'string');
+      const page: any = await client.callTool({ name: 'get_more_search_results', arguments: { sessionId: searchResult.searchId, offset: 0, length: 10 } });
+      assert.equal(page.isError, undefined);
+
+      const started: any = await client.callTool({ name: 'start_process', arguments: { command: "Write-Output 'legacy-process-ok'", timeout_ms: 5000 } });
+      const processResult = JSON.parse(started.content[0].text);
+      assert.equal(typeof processResult.sessionId, 'string');
+      assert.equal(typeof processResult.pid, 'number');
+      await new Promise(resolve => setTimeout(resolve, 150));
+      const output: any = await client.callTool({ name: 'read_process_output', arguments: { pid: processResult.pid, offset: 0, length: 20000 } });
+      assert.match(JSON.parse(output.content[0].text).output, /legacy-process-ok/);
+    } finally {
+      await client.close();
+      await post(local + '/api/tunnel/approval-mode', { mode: 'default' }, f.key);
+    }
+  });
+
   await t.test('read-only scope cannot write', async () => {
     const readOnly = await tokens('rdc.read'); const client = new Client({ name: 'readonly-test', version: '1' });
     await client.connect(new StreamableHTTPClientTransport(new URL(origin + '/mcp'), { requestInit: { headers: { Authorization: 'Bearer ' + readOnly.token.access_token } } }));
