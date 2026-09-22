@@ -161,6 +161,11 @@ await test('HTTP, OAuth and real MCP SDK integration', async t => {
       const strictConfig: any = await client.callTool({ name: 'set_config_value', arguments: { key: 'networkFetchEnabled', value: true } });
       const strictPending = JSON.parse(strictConfig.content[0].text);
       assert.equal(strictPending.status, 'approval_required');
+      await post(local + '/api/approvals/' + strictPending.requestId, { approve: true }, f.key);
+      const strictResult: any = await client.callTool({ name: 'get_request_result', arguments: { requestId: strictPending.requestId } });
+      assert.equal(JSON.parse(strictResult.content[0].text).status, 'completed');
+      const configAfter: any = await client.callTool({ name: 'get_config', arguments: {} });
+      assert.equal(JSON.parse(configAfter.content[0].text).sessionApprovalMode, 'default');
     } finally {
       await client.close();
       await post(local + '/api/tunnel/approval-mode', { mode: 'default' }, f.key);
