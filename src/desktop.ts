@@ -42,6 +42,16 @@ public class RDCXWindow { [DllImport("user32.dll")] public static extern bool Ge
     this.windowsOnly(); const {stdout}=await ps("Get-Process | Where-Object {$_.MainWindowHandle -ne 0} | Select-Object Id,ProcessName,MainWindowTitle,MainWindowHandle | ConvertTo-Json -Compress");
     const value=stdout.trim()?JSON.parse(stdout):[]; return { windows:Array.isArray(value)?value:[value] };
   }
+  async getWindowInfo(pid:number){
+    this.windowsOnly(); if(!Number.isInteger(pid)||pid<=0) throw new Error('Invalid PID.');
+    const {stdout}=await ps(`Add-Type @'
+using System; using System.Runtime.InteropServices;
+public struct RDCXRectInfo { public int Left,Top,Right,Bottom; }
+public class RDCXWindowInfo { [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hWnd,out RDCXRectInfo rect); }
+'@; $p=Get-Process -Id ${pid} -ErrorAction Stop; if($p.MainWindowHandle -eq 0){throw 'Process has no main window'}; $r=New-Object RDCXRectInfo; if(-not [RDCXWindowInfo]::GetWindowRect($p.MainWindowHandle,[ref]$r)){throw 'GetWindowRect failed'}; [pscustomobject]@{Id=$p.Id;ProcessName=$p.ProcessName;Title=$p.MainWindowTitle;Handle=[int64]$p.MainWindowHandle;X=$r.Left;Y=$r.Top;Width=$r.Right-$r.Left;Height=$r.Bottom-$r.Top}|ConvertTo-Json -Compress`);
+    return JSON.parse(stdout.trim());
+  }
+
   async focusWindow(pid:number){
     this.windowsOnly(); const script=`Add-Type @'
 using System; using System.Runtime.InteropServices; public class W {[DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);}
