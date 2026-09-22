@@ -23,13 +23,16 @@ await test('filesystem and consent boundaries', async t => {
     const roots = f.state.config.roots; f.state.config.roots = [];
     await assert.rejects(() => files.read('hello.txt')); f.state.config.roots = roots;
   });
-  await t.test('application files and credentials cannot be read', async () => {
+  await t.test('authorized application source is accessible while runtime credentials stay protected', async () => {
     f.state.config.roots.push({ path: f.base, write: true });
     await assert.rejects(() => files.guard.resolve(path.join(f.base, '.rdc', 'admin-token.txt')));
-    await fs.writeFile(path.join(f.base, 'protected.txt'), 'private');
-    await assert.rejects(() => files.guard.resolve(path.join(f.base, 'protected.txt')));
+    await fs.writeFile(path.join(f.base, 'source.txt'), 'editable');
+    assert.equal((await files.text(path.join(f.base, 'source.txt'))).text, 'editable');
+    await files.write(path.join(f.base, 'source.txt'), 'updated', 'overwrite');
+    assert.equal((await files.text(path.join(f.base, 'source.txt'))).text, 'updated');
     await fs.writeFile(path.join(f.workspace, '.env'), 'SECRET=example');
-    await assert.rejects(() => files.read('.env')); f.state.config.roots.pop();
+    await assert.rejects(() => files.read('.env'));
+    f.state.config.roots.pop();
   });
   await t.test('junction/symlink escape is denied', async () => {
     await fs.writeFile(path.join(f.outside, 'outside.txt'), 'not authorized');
@@ -72,14 +75,32 @@ await test('filesystem and consent boundaries', async t => {
     await files.edit('edit.txt', 'one', 'new', 2); assert.equal((await files.text('edit.txt')).text, 'new two new');
     assert.ok((await fs.readdir(path.join(f.base, '.rdc', 'backups'))).length >= 1);
   });
-  await t.test('move refuses overwrite; delete retains recovery copy', async () => {
+  await t.test('copy/move handle directory trees and soft delete can restore', async () => {
     await files.write('from.txt', 'recover me', 'create'); await files.write('to.txt', 'keep me', 'create');
-    await assert.rejects(() => files.move('from.txt', 'to.txt')); assert.equal((await files.text('to.txt')).text, 'keep me');
-    await files.move('from.txt', 'moved.txt'); const deleted = await files.trash('moved.txt');
-    assert.equal(await fs.readFile(deleted.recoveryPath, 'utf8'), 'recover me'); await assert.rejects(() => files.info('moved.txt'));
+    await assert.rejects(() => files.move('from.txt', 'to.txt'));
+    assert.equal((await files.text('to.txt')).text, 'keep me');
+    await files.copy('from.txt', 'copied.txt');
+    assert.equal((await files.text('copied.txt')).text, 'recover me');
+
+    await files.mkdir('tree/sub');
+    await files.write('tree/sub/a.txt', 'A', 'create');
+    await files.copy('tree', 'tree-copy');
+    assert.equal((await files.text('tree-copy/sub/a.txt')).text, 'A');
+    await files.move('tree-copy', 'tree-moved');
+    assert.equal((await files.text('tree-moved/sub/a.txt')).text, 'A');
+
+    const deleted = await files.trash('tree-moved');
+    await assert.rejects(() => files.info('tree-moved'));
+    assert.ok((await files.listTrash()).items.some((x:any) => x.trashId === deleted.trashId));
+    await files.restoreTrash(deleted.trashId, 'tree-restored');
+    assert.equal((await files.text('tree-restored/sub/a.txt')).text, 'A');
   });
   await t.test('literal search completes and enforces owner isolation', async () => {
-    const search = new SearchService(files); const job = await search.start('owner', { path: f.workspace, pattern: 'gamma', type: 'content', ignoreCase: true, maxResults: 20 });
+    const search = new SearchService(files); const job = await search.start('owner', {
+      path: f.workspace, pattern: 'g.mm.', type: 'content', mode: 'regex', ignoreCase: true,
+      filePatterns: ['*.txt'], includeHidden: false, includeGenerated: false, contextLines: 1,
+      maxDepth: 12, maxResults: 20, timeoutSeconds: 10
+    });
     await eventually(() => search.get(job.searchId, 'owner').status !== 'running');
     assert.ok(search.get(job.searchId, 'owner').totalResults >= 1); assert.throws(() => search.get(job.searchId, 'other'));
   });

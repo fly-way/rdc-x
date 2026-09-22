@@ -93,9 +93,20 @@ await test('HTTP, OAuth and real MCP SDK integration', async t => {
     await client.connect(new StreamableHTTPClientTransport(new URL(origin + '/mcp'), { requestInit: { headers: { Authorization: 'Bearer ' + full.token.access_token } } }));
     try {
       const tools = (await client.listTools()).tools;
-      assert.ok(tools.length >= 60);
-      for (const name of ['read_pdf','edit_docx_text','read_url','list_processes','desktop_screenshot','unity_get_hierarchy','unity_set_transform'])
+      assert.ok(tools.length >= 78);
+      for (const name of ['who_am_i','get_capabilities','set_config_value','copy_file','restore_recovery_item','read_pdf','edit_docx_text','read_url','list_processes','list_displays','desktop_screenshot_region','mouse_scroll','unity_get_hierarchy','unity_set_transform'])
         assert.ok(tools.some(tool => tool.name === name), 'missing tool: ' + name);
+      const byName = Object.fromEntries(tools.map(tool => [tool.name, tool]));
+      const processSchema:any = byName.start_process.inputSchema;
+      assert.deepEqual(processSchema.required, ['command']);
+      assert.ok(processSchema.properties.cwd);
+      assert.ok(processSchema.properties.timeoutSeconds);
+      assert.ok(processSchema.properties.shell);
+      assert.equal('timeout_ms' in processSchema.properties, false);
+      const searchSchema:any = byName.start_search.inputSchema;
+      assert.ok(searchSchema.properties.mode);
+      assert.ok(searchSchema.properties.filePatterns);
+      assert.equal('searchType' in searchSchema.properties, false);
       const ping: any = await client.callTool({ name: 'ping', arguments: {} }); assert.equal(JSON.parse(ping.content[0].text).status, 'online');
       const write: any = await client.callTool({ name: 'write_file', arguments: { path: 'sdk-test.txt', content: 'written via approved MCP', mode: 'create' } });
       const pending = JSON.parse(write.content[0].text); assert.equal(pending.status, 'approval_required');
@@ -103,7 +114,7 @@ await test('HTTP, OAuth and real MCP SDK integration', async t => {
       await post(local + '/api/approvals/' + pending.requestId, { approve: true }, f.key);
       const result: any = await client.callTool({ name: 'get_request_result', arguments: { requestId: pending.requestId } }); assert.equal(JSON.parse(result.content[0].text).status, 'completed');
       assert.equal((await app.files.text('sdk-test.txt')).text, 'written via approved MCP');
-      const noConfig = (await client.listTools()).tools.some(tool => ['set_config_value', 'approve', 'shutdown'].includes(tool.name)); assert.equal(noConfig, false);
+      assert.equal((await client.listTools()).tools.some(tool => tool.name === 'approve'), false);
     } finally { await client.close(); }
   });
   await t.test('loopback Secure MCP Tunnel endpoint works without OAuth but keeps local approval', async () => {
@@ -131,43 +142,23 @@ await test('HTTP, OAuth and real MCP SDK integration', async t => {
     try {
       const write: any = await client.callTool({ name: 'write_file', arguments: { path: 'tunnel-trusted.txt', content: 'trusted', mode: 'create' } });
       assert.equal(JSON.parse(write.content[0].text).path.endsWith('tunnel-trusted.txt'), true);
-    } finally {
-      await client.close();
-      await post(local + '/api/tunnel/approval-mode', { mode: 'default' }, f.key);
-    }
-  });
-  await t.test('legacy frozen app arguments remain compatible', async () => {
-    f.state.saveConfig({ ...f.state.config, terminalEnabled: true });
-    const changed = await post(local + '/api/tunnel/approval-mode', { mode: 'trusted' }, f.key);
-    assert.equal(changed.status, 200);
-    const client = new Client({ name: 'secure-tunnel-legacy-schema-test', version: '1' });
-    await client.connect(new StreamableHTTPClientTransport(new URL(tunnel + '/mcp')));
-    try {
-      const created: any = await client.callTool({ name: 'write_file', arguments: { path: 'legacy.txt', content: 'one', mode: 'create' } });
-      assert.equal(created.isError, undefined);
-      const rewritten: any = await client.callTool({ name: 'write_file', arguments: { path: 'legacy.txt', content: 'two', mode: 'rewrite' } });
-      assert.equal(rewritten.isError, undefined);
-      assert.equal((await app.files.text('legacy.txt')).text, 'two');
 
-      const search: any = await client.callTool({ name: 'start_search', arguments: { path: '.', pattern: 'legacy.txt', searchType: 'files', maxResults: 10 } });
-      const searchResult = JSON.parse(search.content[0].text);
-      assert.equal(typeof searchResult.searchId, 'string');
-      const page: any = await client.callTool({ name: 'get_more_search_results', arguments: { sessionId: searchResult.searchId, offset: 0, length: 10 } });
-      assert.equal(page.isError, undefined);
-
-      const started: any = await client.callTool({ name: 'start_process', arguments: { command: "Write-Output 'legacy-process-ok'", timeout_ms: 5000 } });
-      const processResult = JSON.parse(started.content[0].text);
-      assert.equal(typeof processResult.sessionId, 'string');
-      assert.equal(typeof processResult.pid, 'number');
+      f.state.config.terminalEnabled = true;
+      const started: any = await client.callTool({ name: 'start_process', arguments: { command: "Write-Output 'native-process-ok'", timeoutSeconds: 10 } });
+      const session = JSON.parse(started.content[0].text);
+      assert.equal(typeof session.sessionId, 'string');
       await new Promise(resolve => setTimeout(resolve, 150));
-      const output: any = await client.callTool({ name: 'read_process_output', arguments: { pid: processResult.pid, offset: 0, length: 20000 } });
-      assert.match(JSON.parse(output.content[0].text).output, /legacy-process-ok/);
+      const output: any = await client.callTool({ name: 'read_process_output', arguments: { sessionId: session.sessionId, offset: 0, length: 20000 } });
+      assert.match(JSON.parse(output.content[0].text).output, /native-process-ok/);
+
+      const strictConfig: any = await client.callTool({ name: 'set_config_value', arguments: { key: 'networkFetchEnabled', value: true } });
+      const strictPending = JSON.parse(strictConfig.content[0].text);
+      assert.equal(strictPending.status, 'approval_required');
     } finally {
       await client.close();
       await post(local + '/api/tunnel/approval-mode', { mode: 'default' }, f.key);
     }
   });
-
   await t.test('read-only scope cannot write', async () => {
     const readOnly = await tokens('rdc.read'); const client = new Client({ name: 'readonly-test', version: '1' });
     await client.connect(new StreamableHTTPClientTransport(new URL(origin + '/mcp'), { requestInit: { headers: { Authorization: 'Bearer ' + readOnly.token.access_token } } }));
