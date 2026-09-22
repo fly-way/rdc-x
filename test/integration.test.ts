@@ -94,7 +94,7 @@ await test('HTTP, OAuth and real MCP SDK integration', async t => {
     try {
       const tools = (await client.listTools()).tools;
       assert.ok(tools.length >= 90);
-      for (const name of ['who_am_i','get_capabilities','set_config_value','copy_file','restore_recovery_item','read_pdf','pdf_extract_pages','pdf_insert_pdf','edit_docx_text','read_url','list_processes','list_displays','desktop_screenshot_region','mouse_scroll','unity_get_hierarchy','unity_set_transform','unity_get_serialized_properties','unity_set_serialized_property','unity_find_assets','unity_instantiate_prefab','unity_save_prefab'])
+      for (const name of ['who_am_i','get_capabilities','set_config_value','copy_path','move_path','delete_path','restore_recovery_item','read_pdf','pdf_extract_pages','pdf_insert_pdf','edit_docx_text','read_url','list_processes','list_displays','desktop_screenshot_region','mouse_scroll','unity_get_hierarchy','unity_set_transform','unity_get_serialized_properties','unity_set_serialized_property','unity_find_assets','unity_instantiate_prefab','unity_save_prefab'])
         assert.ok(tools.some(tool => tool.name === name), 'missing tool: ' + name);
       const byName = Object.fromEntries(tools.map(tool => [tool.name, tool]));
       const processSchema:any = byName.start_process.inputSchema;
