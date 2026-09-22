@@ -182,6 +182,12 @@ export function createMcp(services: Services, owner: string, scopes: string[], a
   mutate('pdf_delete_pages', 'Create a new PDF by deleting selected 1-based pages.', {
     path: p, output: p, pages: z.array(z.number().int().min(1)).min(1).max(500)
   }, a => documents.deletePdfPages(a.path, a.output, a.pages));
+  mutate('pdf_extract_pages', 'Create a new PDF containing selected 1-based pages in the requested order.', {
+    path: p, output: p, pages: z.array(z.number().int().min(1)).min(1).max(500)
+  }, a => documents.extractPdfPages(a.path, a.output, a.pages));
+  mutate('pdf_insert_pdf', 'Insert all pages of one PDF into another after a 1-based page count; afterPage=0 inserts at the beginning.', {
+    path: p, insertPath: p, output: p, afterPage: z.number().int().min(0)
+  }, a => documents.insertPdf(a.path, a.insertPath, a.output, a.afterPage));
   mutate('pdf_merge', 'Merge up to 20 authorized PDFs into a new PDF.', {
     paths: z.array(p).min(1).max(20), output: p
   }, a => documents.mergePdfs(a.paths, a.output));
@@ -347,6 +353,32 @@ export function createMcp(services: Services, owner: string, scopes: string[], a
   mutate('unity_add_component', 'Add a Unity Component by full type name or short class name.', {
     project: p, objectPath: z.string().min(1).max(4096), componentType: z.string().min(1).max(500)
   }, a => unity.command(a.project, 'add_component', JSON.stringify({ path: a.objectPath, type: a.componentType })));
+  mutate('unity_remove_component', 'Remove a non-Transform Component with Unity Undo support.', {
+    project: p, objectPath: z.string().min(1).max(4096), componentType: z.string().min(1).max(500)
+  }, a => unity.command(a.project, 'remove_component', JSON.stringify({ path: a.objectPath, type: a.componentType })));
+  register('unity_get_serialized_properties', 'List visible serialized properties for one Component.', {
+    project: p, objectPath: z.string().min(1).max(4096), componentType: z.string().min(1).max(500)
+  }, 'rdc.read', a => unity.command(a.project, 'serialized_properties', JSON.stringify({ path: a.objectPath, type: a.componentType })));
+  mutate('unity_set_serialized_property', 'Set a common Unity serialized property type using its property path.', {
+    project: p, objectPath: z.string().min(1).max(4096), componentType: z.string().min(1).max(500),
+    propertyPath: z.string().min(1).max(1000), value: z.string().max(10000)
+  }, a => unity.command(a.project, 'set_serialized_property', JSON.stringify({ path: a.objectPath, component: a.componentType, property: a.propertyPath, value: a.value })));
+  register('unity_find_assets', 'Search Unity AssetDatabase and return asset paths.', {
+    project: p, filter: z.string().max(500).default(''), folders: z.array(z.string().min(1).max(1000)).max(50).default([]),
+    limit: z.number().int().min(1).max(500).default(100)
+  }, 'rdc.read', a => unity.command(a.project, 'find_assets', JSON.stringify({ filter: a.filter, folders: a.folders, limit: a.limit })));
+  mutate('unity_instantiate_prefab', 'Instantiate a prefab asset into the active scene with Undo support.', {
+    project: p, assetPath: z.string().min(1).max(2000), parent: z.string().max(4096).optional(), name: z.string().max(200).optional()
+  }, a => unity.command(a.project, 'instantiate_prefab', JSON.stringify({ assetPath: a.assetPath, parent: a.parent ?? '', name: a.name ?? '' })));
+  mutate('unity_save_prefab', 'Save a scene GameObject as a prefab asset and connect the instance.', {
+    project: p, objectPath: z.string().min(1).max(4096), assetPath: z.string().min(1).max(2000)
+  }, a => unity.command(a.project, 'save_prefab', JSON.stringify({ path: a.objectPath, assetPath: a.assetPath })));
+  mutate('unity_duplicate_game_object', 'Duplicate a GameObject, optionally changing parent and name, with Undo support.', {
+    project: p, objectPath: z.string().min(1).max(4096), parent: z.string().max(4096).optional(), name: z.string().max(200).optional()
+  }, a => unity.command(a.project, 'duplicate_game_object', JSON.stringify({ path: a.objectPath, parent: a.parent ?? '', name: a.name ?? '' })));
+  mutate('unity_unpack_prefab', 'Unpack a prefab instance root with Unity Undo/interaction support.', {
+    project: p, objectPath: z.string().min(1).max(4096), completely: z.boolean().default(false)
+  }, a => unity.command(a.project, 'unpack_prefab', JSON.stringify({ path: a.objectPath, completely: a.completely })));
   execMutation('unity_open_project', 'Launch the project using its matching Unity Hub editor version.', { project: p }, a => unity.open(a.project));
 
   register('get_request_result', 'Poll a locally approved operation result. Do not resubmit the original mutation.', { requestId: sid }, 'rdc.read',

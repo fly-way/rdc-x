@@ -145,6 +145,31 @@ export class DocumentService {
     const data=await pdf.save(); await fs.writeFile(target,data,{flag:'wx'});
     return { path:target, pages:pdf.getPageCount(), removed:unique.slice().reverse() };
   }
+  async extractPdfPages(input:string, output:string, pages:number[]) {
+    const source=await this.file(input); const target=await this.file(output,true,true);
+    try { await fs.stat(target); throw new Error('Destination already exists.'); } catch(e:any) { if(e.code!=='ENOENT') throw e; }
+    const pdf=await PDFLibDocument.load(await fs.readFile(source));
+    const ordered=[...new Set(pages)];
+    if(!ordered.length) throw new Error('At least one page is required.');
+    for(const page of ordered) if(!Number.isInteger(page)||page<1||page>pdf.getPageCount()) throw new Error('PDF page is out of range: '+page);
+    const result=await PDFLibDocument.create();
+    const copied=await result.copyPages(pdf,ordered.map(page=>page-1)); for(const page of copied) result.addPage(page);
+    const data=await result.save(); await fs.writeFile(target,data,{flag:'wx'});
+    return { path:target, pages:result.getPageCount(), extracted:ordered };
+  }
+  async insertPdf(input:string, insertInput:string, output:string, afterPage:number) {
+    const source=await this.file(input); const insertedSource=await this.file(insertInput); const target=await this.file(output,true,true);
+    try { await fs.stat(target); throw new Error('Destination already exists.'); } catch(e:any) { if(e.code!=='ENOENT') throw e; }
+    const base=await PDFLibDocument.load(await fs.readFile(source)); const insert=await PDFLibDocument.load(await fs.readFile(insertedSource));
+    if(!Number.isInteger(afterPage)||afterPage<0||afterPage>base.getPageCount()) throw new Error('afterPage must be between 0 and the base PDF page count.');
+    const result=await PDFLibDocument.create();
+    const beforeIndices=Array.from({length:afterPage},(_,i)=>i); const afterIndices=Array.from({length:base.getPageCount()-afterPage},(_,i)=>i+afterPage);
+    for(const page of await result.copyPages(base,beforeIndices)) result.addPage(page);
+    for(const page of await result.copyPages(insert,insert.getPageIndices())) result.addPage(page);
+    for(const page of await result.copyPages(base,afterIndices)) result.addPage(page);
+    const data=await result.save(); await fs.writeFile(target,data,{flag:'wx'});
+    return { path:target, pages:result.getPageCount(), insertedPages:insert.getPageCount(), afterPage };
+  }
   async mergePdfs(inputs:string[], output:string) {
     if(inputs.length<1||inputs.length>20) throw new Error('Provide 1-20 source PDFs.');
     const target=await this.file(output,true,true);
