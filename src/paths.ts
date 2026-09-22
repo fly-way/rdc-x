@@ -6,9 +6,12 @@ export function within(parent: string, child: string) {
   const relative = path.relative(parent, child);
   return relative === '' || (!path.isAbsolute(relative) && relative !== '..' && !relative.startsWith(`..${path.sep}`));
 }
-const secretNames = /^(\.env(?:\..*)?|\.ssh|\.aws|\.azure|\.gnupg|id_rsa|id_ed25519|\.rdc)$/i;
+
+const secretNames = /^(\.env(?:\..*)?|\.ssh|\.aws|\.azure|\.gnupg|\.rdc|\.npmrc|\.pypirc|\.netrc|\.git-credentials|id_rsa|id_ed25519)$/i;
+
 export class PathGuard {
   constructor(readonly state: State) {}
+
   async resolve(input: string, write = false, missing = false): Promise<string> {
     if (!input || input.includes('\0') || input.split(/[\\/]/).includes('..')) throw new Error('Invalid or traversing path.');
     if (process.platform === 'win32') {
@@ -17,15 +20,20 @@ export class PathGuard {
       if (input.split(/[\\/]/).some(p => /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\.|$)/i.test(p) || /[. ]$/.test(p)))
         throw new Error('Windows device names and ambiguous trailing characters are not allowed.');
     }
+
     const roots = this.state.config.roots;
     if (!roots.length) throw new Error('No directories have been authorized.');
+
     const candidate = path.resolve(path.isAbsolute(input) ? input : path.join(roots[0]!.path, input));
     if (candidate.split(path.sep).some(part => secretNames.test(part))) throw new Error('Protected credentials path.');
-    // The server cannot rewrite its own policy, code, launchers or secrets through file tools.
-    if (within(this.state.base, candidate) && !within(path.join(this.state.base, 'workspace'), candidate))
-      throw new Error('RDC-X application files are protected; only its workspace is accessible.');
+
+    const tunnelBinary = path.resolve(this.state.base, 'tools', process.platform === 'win32' ? 'tunnel-client.exe' : 'tunnel-client');
+    if (write && path.resolve(candidate) === tunnelBinary)
+      throw new Error('The active tunnel-client executable is protected from remote mutation.');
+
     const root = roots.find(r => within(path.resolve(r.path), candidate) && (!write || r.write));
     if (!root) throw new Error(write ? 'Path is outside writable roots.' : 'Path is outside allowed roots.');
+
     let current = path.parse(candidate).root;
     let firstMissing = false;
     for (const part of candidate.slice(current.length).split(path.sep).filter(Boolean)) {
@@ -39,7 +47,7 @@ export class PathGuard {
         if (missing && e.code === 'ENOENT') firstMissing = true; else throw e;
       }
     }
-    // Canonical path comparison also catches short-name / mount alias escapes.
+
     const canonicalRoot = await fs.realpath(root.path);
     let ancestor = candidate;
     while (true) {
