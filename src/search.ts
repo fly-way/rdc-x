@@ -146,6 +146,18 @@ export class SearchService {
     };
   }
 
+  async wait(id: string, owner: string, timeoutMs = 30000, offset = 0, length = 100) {
+    const deadline = Date.now() + Math.min(Math.max(timeoutMs, 0), 120000);
+    let item = this.items.get(id);
+    if (!item || item.owner !== owner) throw new Error('Search not found.');
+    while (item.status === 'running' && Date.now() < deadline) {
+      await new Promise(resolve => setTimeout(resolve, 40));
+      item = this.items.get(id);
+      if (!item || item.owner !== owner) throw new Error('Search not found.');
+    }
+    return this.get(id, owner, offset, length);
+  }
+
   stop(id: string, owner: string) {
     this.get(id, owner);
     this.items.get(id)!.status = 'stopped';
