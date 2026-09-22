@@ -2,21 +2,22 @@
 
 RDC-X is a self-hosted MCP gateway that lets ChatGPT work with an authorized Windows computer through controlled local interfaces.
 
-Current version: **0.3.0**
+Current version: **0.3.1**
 
 The primary connection path is **OpenAI Secure MCP Tunnel**. RDC-X keeps its MCP endpoint on the local loopback interface while the official `tunnel-client` creates the outbound connection to OpenAI.
 
 ## What RDC-X can do
 
-RDC-X v0.3 exposes **90+ native MCP tools** covering:
+RDC-X v0.3.1 exposes **95+ native MCP tools** covering:
 
-- files and directories: list, read, write, exact edit, copy/move directory trees, regex/literal search, recovery and soft delete;
-- terminal and managed process sessions with PowerShell, pwsh, cmd, sh/bash backends as appropriate;
+- files and directories: list, read, write, exact edit, copy/move directory trees, cryptographic hashing, regex/literal search, recovery and soft delete;
+- terminal and managed process sessions with PowerShell, pwsh, cmd, sh/bash backends, plus wait primitives for reliable long-running workflows;
 - Windows desktop: display/window/region screenshots, window focus, cursor position, mouse, keyboard, scrolling and clipboard operations;
 - system information and guarded process termination;
 - PDF, DOCX and XLSX workflows, including PDF merge/delete/extract/insert operations;
 - bounded public HTTP/HTTPS text retrieval with private-network protections;
 - Unity Editor workflows including projects, Console, hierarchy, scenes, Game View, Play Mode, GameObjects, transforms, components, serialized properties, AssetDatabase search and prefab workflows;
+- runtime diagnostics for roots, shells, Git and tunnel-client readiness;
 - local approval requests, audit events and access-policy controls.
 
 RDC-X is intended for a single authorized computer and personal/private use. It has no account system, subscription layer, payment logic or telemetry.
