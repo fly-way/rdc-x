@@ -166,6 +166,17 @@ export class ProcessService {
     };
   }
 
+  async wait(id: string, owner: string, timeoutMs = 30000, offset = 0, length = 20000) {
+    const item = this.find(id, owner);
+    if (item.state === 'running' && timeoutMs > 0) {
+      await Promise.race([
+        new Promise<void>(resolve => item.child.once('close', () => resolve())),
+        new Promise<void>(resolve => setTimeout(resolve, Math.min(timeoutMs, 120000)))
+      ]);
+    }
+    return this.read(id, owner, offset, length);
+  }
+
   async input(id: string, owner: string, text: string) {
     this.assertEnabled();
     const item = this.find(id, owner);
