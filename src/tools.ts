@@ -75,14 +75,39 @@ export function createMcp(services: Services, owner: string, scopes: string[], a
     if (!state.config.networkFetchEnabled) throw new Error('URL fetching is disabled in the local dashboard.');
     return network.read(a.url,a.maxBytes);
   });
-  mutate('write_file', 'Create, overwrite or append UTF-8 text. Existing files are backed up.', { path:p, content:z.string().max(1000000), mode:z.enum(['create','overwrite','append']).default('create') }, a=>files.write(a.path,a.content,a.mode));
-  mutate('edit_block', 'Replace exact text only when occurrence count equals expected_replacements.', { path:p, old_string:z.string().min(1).max(1000000), new_string:z.string().max(1000000), expected_replacements:z.number().int().min(1).max(10000).default(1) }, a=>files.edit(a.path,a.old_string,a.new_string,a.expected_replacements));
+  mutate('write_file', 'Create, overwrite or append UTF-8 text. Existing files are backed up. The legacy mode name rewrite is accepted as an alias for overwrite.', { path:p, content:z.string().max(1000000), mode:z.enum(['create','overwrite','append','rewrite']).default('create') }, a=>files.write(a.path,a.content,a.mode==='rewrite'?'overwrite':a.mode));
+  mutate('edit_block', 'Replace exact text only when occurrence count equals expected_replacements. Legacy clients may use file_path; XLSX range edits are also accepted for compatibility.', {
+    path:p.optional(), file_path:p.optional(), old_string:z.string().min(1).max(1000000).optional(), new_string:z.string().max(1000000).optional(),
+    expected_replacements:z.number().int().min(1).max(10000).default(1), range:z.string().min(2).max(100).optional(), content:z.any().optional()
+  }, a=>{
+    const target=a.path??a.file_path; if(!target) throw new Error('path or file_path is required.');
+    if(a.range!==undefined) {
+      if(!Array.isArray(a.content)) throw new Error('XLSX range editing requires content to be a 2D array.');
+      return documents.editExcel(target,a.range,a.content);
+    }
+    if(a.old_string===undefined||a.new_string===undefined) throw new Error('old_string and new_string are required for text editing.');
+    return files.edit(target,a.old_string,a.new_string,a.expected_replacements);
+  });
   mutate('create_directory', 'Create a directory inside a writable root.', { path:p }, a=>files.mkdir(a.path));
   mutate('move_file', 'Move/rename one regular file, refusing to overwrite.', { source:p,destination:p }, a=>files.move(a.source,a.destination));
   mutate('delete_file', 'Soft-delete one regular file into the RDC-X recovery area.', { path:p }, a=>files.trash(a.path));
 
   register('read_pdf', 'Extract text from authorized PDF pages.', { path:p,startPage:z.number().int().min(1).default(1),pageCount:z.number().int().min(1).max(100).default(20) }, 'rdc.read', a=>documents.readPdf(a.path,a.startPage,a.pageCount));
-  mutate('write_pdf', 'Create a new PDF from Markdown-like plain text; refuses overwrite.', { path:p,text:z.string().max(2000000),title:z.string().max(200).optional() }, a=>documents.writePdf(a.path,a.text,a.title));
+  mutate('write_pdf', 'Create a new PDF from Markdown-like plain text; refuses overwrite. Legacy clients may send content/outputPath. Delete-only legacy page operations are supported; use the dedicated PDF tools after refreshing app actions for other edits.', {
+    path:p, text:z.string().max(2000000).optional(), content:z.union([z.string().max(2000000),z.array(z.any()).max(500)]).optional(),
+    outputPath:p.optional(), title:z.string().max(200).optional()
+  }, a=>{
+    const text=a.text??(typeof a.content==='string'?a.content:undefined);
+    if(text!==undefined) return documents.writePdf(a.outputPath??a.path,text,a.title);
+    if(Array.isArray(a.content)) {
+      if(!a.outputPath) throw new Error('outputPath is required for legacy PDF page operations.');
+      if(!a.content.every((op:any)=>op?.type==='delete'&&Array.isArray(op.pageIndexes))) throw new Error('Legacy PDF insert operations require refreshed RDC-X app actions.');
+      const pages=[...new Set(a.content.flatMap((op:any)=>op.pageIndexes).map((n:any)=>Number(n)+1))].filter(n=>Number.isInteger(n)&&n>0) as number[];
+      if(!pages.length) throw new Error('No valid pages were provided for deletion.');
+      return documents.deletePdfPages(a.path,a.outputPath,pages);
+    }
+    throw new Error('text or content is required.');
+  });
   mutate('pdf_delete_pages', 'Create a new PDF by deleting selected 1-based pages from an existing PDF.', { path:p,output:p,pages:z.array(z.number().int().min(1)).min(1).max(500) }, a=>documents.deletePdfPages(a.path,a.output,a.pages));
   mutate('pdf_merge', 'Merge up to 20 authorized PDFs into a new PDF in the given order.', { paths:z.array(p).min(1).max(20),output:p }, a=>documents.mergePdfs(a.paths,a.output));
   register('read_excel', 'Read an XLSX worksheet or A1 range as rows.', { path:p,sheet:z.string().max(200).optional(),range:z.string().max(100).optional(),maxRows:z.number().int().min(1).max(2000).default(200),maxCols:z.number().int().min(1).max(200).default(50) }, 'rdc.read', a=>documents.readExcel(a.path,a.sheet,a.range,a.maxRows,a.maxCols));
@@ -92,16 +117,38 @@ export function createMcp(services: Services, owner: string, scopes: string[], a
   mutate('write_docx', 'Create a new DOCX from Markdown-like text; refuses overwrite.', { path:p,markdown:z.string().max(2000000) }, a=>documents.writeDocx(a.path,a.markdown));
   mutate('edit_docx_text', 'Replace exact visible text in DOCX body/headers/footers, preserving surrounding runs where possible and creating a backup.', { path:p,oldText:z.string().min(1).max(200000),newText:z.string().max(200000),expectedReplacements:z.number().int().min(1).max(10000).default(1) }, a=>documents.editDocxText(a.path,a.oldText,a.newText,a.expectedReplacements));
 
-  register('start_search', 'Start a bounded literal-substring filename or content search.', { path:p,pattern:z.string().min(1).max(200),type:z.enum(['files','content']).default('content'),ignoreCase:z.boolean().default(true),maxResults:z.number().int().min(1).max(500).default(100) }, 'rdc.read', a=>searches.start(owner,a));
-  register('get_more_search_results', 'Read paginated search results.', { searchId:sid,offset:z.number().int().min(0).default(0),length:z.number().int().min(1).max(200).default(100) }, 'rdc.read', a=>searches.get(a.searchId,owner,a.offset,a.length));
-  register('stop_search', 'Stop your own search.', { searchId:sid }, 'rdc.read', a=>searches.stop(a.searchId,owner));
+  register('start_search', 'Start a bounded literal-substring filename or content search. Legacy clients may use searchType instead of type.', {
+    path:p, pattern:z.string().min(1).max(200), type:z.enum(['files','content']).optional(), searchType:z.enum(['files','content']).optional(),
+    ignoreCase:z.boolean().default(true), maxResults:z.number().int().min(1).max(500).default(100)
+  }, 'rdc.read', a=>searches.start(owner,{path:a.path,pattern:a.pattern,type:a.type??a.searchType??'content',ignoreCase:a.ignoreCase,maxResults:a.maxResults}));
+  register('get_more_search_results', 'Read paginated search results. Legacy clients may use sessionId instead of searchId.', {
+    searchId:sid.optional(),sessionId:sid.optional(),offset:z.number().int().min(0).default(0),length:z.number().int().min(1).max(200).default(100)
+  }, 'rdc.read', a=>{const id=a.searchId??a.sessionId;if(!id)throw new Error('searchId or sessionId is required.');return searches.get(id,owner,a.offset,a.length);});
+  register('stop_search', 'Stop your own search. Legacy clients may use sessionId instead of searchId.', { searchId:sid.optional(),sessionId:sid.optional() }, 'rdc.read', a=>{const id=a.searchId??a.sessionId;if(!id)throw new Error('searchId or sessionId is required.');return searches.stop(id,owner);});
   register('list_searches', 'List searches associated with this RDC-X connection.', {}, 'rdc.read', ()=>({searches:searches.list(owner)}));
 
-  mutate('start_process', 'Run a PowerShell command (Windows) or /bin/sh command. The terminal is NOT a filesystem sandbox. Set interactive=true only for REPLs or commands that need later stdin.', { command:z.string().min(1).max(32000),cwd:p,timeoutSeconds:z.number().int().min(1).max(3600).default(120),interactive:z.boolean().default(false) }, a=>processes.start(owner,a.command,a.cwd,a.timeoutSeconds,a.interactive),'exec');
-  register('read_process_output', 'Read bounded output from a session created by this RDC-X connection.', { sessionId:sid,offset:z.number().int().min(0).default(0),length:z.number().int().min(1).max(50000).default(20000) }, 'rdc.exec', a=>processes.read(a.sessionId,owner,a.offset,a.length));
-  mutate('interact_with_process', 'Send exact stdin text to your running process.', { sessionId:sid,input:z.string().max(32000) }, a=>processes.input(a.sessionId,owner,a.input),'exec');
+  const processSessionId=(a:any)=>{
+    if(typeof a.sessionId==='string'&&a.sessionId) return a.sessionId;
+    if(Number.isInteger(a.pid)&&a.pid>0) {
+      const match=processes.list(owner).find((item:any)=>item.pid===a.pid);
+      if(match) return match.id;
+    }
+    throw new Error('sessionId or a PID belonging to this RDC-X connection is required.');
+  };
+  mutate('start_process', 'Run a PowerShell command (Windows) or /bin/sh command. The terminal is NOT a filesystem sandbox. cwd defaults to the first authorized root for compatibility with older app snapshots.', {
+    command:z.string().min(1).max(32000), cwd:p.default('.'), timeoutSeconds:z.number().int().min(1).max(3600).optional(),
+    timeout_ms:z.number().int().min(1).max(3600000).optional(), interactive:z.boolean().default(false)
+  }, a=>processes.start(owner,a.command,a.cwd,a.timeoutSeconds??Math.max(1,Math.ceil((a.timeout_ms??120000)/1000)),a.interactive),'exec');
+  register('read_process_output', 'Read bounded output from a session created by this RDC-X connection. Legacy clients may identify the session by PID.', {
+    sessionId:sid.optional(),pid:z.number().int().positive().optional(),offset:z.number().int().min(0).default(0),length:z.number().int().min(1).max(50000).default(20000)
+  }, 'rdc.exec', a=>processes.read(processSessionId(a),owner,a.offset,a.length));
+  mutate('interact_with_process', 'Send exact stdin text to your running process. Legacy clients may identify the session by PID.', {
+    sessionId:sid.optional(),pid:z.number().int().positive().optional(),input:z.string().max(32000)
+  }, a=>processes.input(processSessionId(a),owner,a.input),'exec');
   register('list_sessions', 'List only sessions created by this RDC-X connection.', {}, 'rdc.exec', ()=>({sessions:processes.list(owner)}));
-  mutate('force_terminate', 'Stop only a process tree created by this RDC-X connection.', { sessionId:sid }, a=>processes.stop(a.sessionId,owner),'exec');
+  mutate('force_terminate', 'Stop only a process tree created by this RDC-X connection. Legacy clients may identify the session by PID.', {
+    sessionId:sid.optional(),pid:z.number().int().positive().optional()
+  }, a=>processes.stop(processSessionId(a),owner),'exec');
 
   register('get_system_info', 'Read operating system, CPU count and memory summary.', {}, 'rdc.read', ()=>system.info());
   register('list_processes', 'List system processes and resource usage.', { limit:z.number().int().min(1).max(1000).default(200) }, 'rdc.read', a=>system.listProcesses(a.limit));
@@ -142,6 +189,13 @@ export function createMcp(services: Services, owner: string, scopes: string[], a
 
   register('get_request_result', 'Poll the result of a locally approved operation. Never resubmit the original mutation.', { requestId:sid }, 'rdc.read', a=>approvals.result(a.requestId,owner));
   register('get_usage_stats', 'Read local service usage counts. No billing or telemetry.', {}, 'rdc.read', ()=>({ uptimeSeconds:Math.floor((Date.now()-state.started)/1000),sessions:processes.list(owner).length,searches:searches.list(owner).length,requests:approvals.list().filter(a=>a.owner===owner).length,sessionApprovalMode:approvals.mode(owner) }));
-  register('get_recent_tool_calls', 'Read this authorization\'s recent audit events; secrets and file bodies are not logged.', { limit:z.number().int().min(1).max(100).default(30) }, 'rdc.read', a=>({events:state.auditTail.filter(e=>e.owner===owner).slice(-a.limit)}));
+  register('get_recent_tool_calls', 'Read this authorization\'s recent audit events; secrets and file bodies are not logged. Legacy maxResults/toolName/since filters are accepted.', {
+    limit:z.number().int().min(1).max(1000).optional(),maxResults:z.number().int().min(1).max(1000).optional(),toolName:z.string().min(1).max(200).optional(),since:z.string().max(100).optional()
+  }, 'rdc.read', a=>{
+    let events=state.auditTail.filter(e=>e.owner===owner);
+    if(a.toolName) events=events.filter(e=>e.action===a.toolName);
+    if(a.since){const since=Date.parse(a.since);if(Number.isNaN(since))throw new Error('since must be an ISO date-time.');events=events.filter(e=>Date.parse(e.time)>=since);}
+    return {events:events.slice(-(a.limit??a.maxResults??30))};
+  });
   return server;
 }
