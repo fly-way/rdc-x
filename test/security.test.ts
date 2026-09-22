@@ -15,6 +15,9 @@ await test('filesystem and consent boundaries', async t => {
     await fs.writeFile(path.join(f.workspace, 'hello.txt'), 'alpha\nbeta\ngamma');
     const result = await files.read('hello.txt', -2, 1); assert.deepEqual(result.lines, ['beta']); assert.equal(result.totalLines, 3);
   });
+  await t.test('dot relative path resolves to the first authorized root', async () => {
+    assert.equal(await files.guard.resolve('.'), path.resolve(f.workspace));
+  });
   await t.test('sibling-directory access and traversal fail closed', async () => {
     await assert.rejects(() => files.guard.resolve(f.outside));
     await assert.rejects(() => files.guard.resolve('../outside'));
