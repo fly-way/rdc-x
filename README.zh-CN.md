@@ -36,10 +36,12 @@ RDC-X 主要用于单台已授权电脑的个人使用，不包含账号系统�
 RDC-X 会按下面顺序寻找 `tunnel-client`：
 
 ```text
+TUNNEL_CLIENT_PATH 环境变量
 <rdc-x目录>\tools\tunnel-client.exe
 系统 PATH
-TUNNEL_CLIENT_PATH 环境变量
 ```
+
+Windows 下，如果本地文件缺失，`Start-All.cmd` 会自动从 OpenAI 官方 `openai/tunnel-client` GitHub Release 下载当前架构的最新正式版，校验 Release 提供的 SHA-256 后安装到 `<rdc-x目录>\tools\tunnel-client.exe`。
 
 ## 安装
 
@@ -56,7 +58,15 @@ Windows 日常只需要使用一个启动入口：
 Start-All.cmd
 ```
 
-它会自动检查 Node.js、同步 npm 依赖、初始化本机配置、编译 RDC-X、在需要时重启本机服务，并打开浏览器。
+它会自动检查 Node.js、同步 npm 依赖、检查并在缺失时安装 OpenAI 官方 `tunnel-client`、初始化本机配置、编译 RDC-X、在需要时重启本机服务，并打开浏览器。
+
+如果只想单独安装或修复 `tunnel-client`：
+
+```powershell
+node scripts\install-tunnel.mjs
+```
+
+不需要修改系统 PATH，也不需要全局安装；可执行文件和 Release 元数据都保存在已被 gitignore 的 `tools\` 目录。
 
 ## 第一次使用
 
@@ -225,6 +235,19 @@ git pull
 ```
 
 `Start-All.cmd` 会重新编译并重启当前本机服务，保证浏览器前端和后台运行的是同一版本。
+
+## `spawn tunnel-client ENOENT` 排错
+
+这个错误表示 Windows 找不到 `tunnel-client` 可执行文件，并不是 Tunnel ID 或 Runtime API Key 校验失败。
+
+在 RDC-X 目录执行：
+
+```powershell
+node scripts\install-tunnel.mjs
+.\tools\tunnel-client.exe --version
+```
+
+确认版本可以输出后，重新运行 `Start-All.cmd` 再连接。如果你有意把 `tunnel-client.exe` 放在其他位置，可以只为 RDC-X 进程设置 `TUNNEL_CLIENT_PATH` 为该文件的完整路径。
 
 ## 检查与诊断
 

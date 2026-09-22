@@ -18,6 +18,13 @@ if errorlevel 1 (
   goto :failed
 )
 
+echo [RDC-X] Checking OpenAI tunnel-client...
+node scripts\install-tunnel.mjs
+if errorlevel 1 (
+  echo [RDC-X] tunnel-client installation/check failed.
+  goto :failed
+)
+
 echo [RDC-X] Preparing local configuration...
 call npm.cmd run setup
 if errorlevel 1 (

@@ -33,13 +33,15 @@ For the recommended Windows setup you need:
 - a Runtime API Key with permission to use that tunnel;
 - a ChatGPT workspace where the RDC-X custom/developer MCP app has been provisioned.
 
-The tunnel-client can be discovered from:
+RDC-X resolves `tunnel-client` in this order:
 
 ```text
+TUNNEL_CLIENT_PATH
 <rdc-x>\tools\tunnel-client.exe
 PATH
-TUNNEL_CLIENT_PATH
 ```
+
+On Windows, `Start-All.cmd` automatically installs the latest official OpenAI `tunnel-client` into `<rdc-x>\tools\tunnel-client.exe` when that file is missing. The download comes from the official `openai/tunnel-client` GitHub release, and RDC-X verifies the release SHA-256 digest before installation.
 
 ## Install
 
@@ -56,7 +58,15 @@ The normal Windows workflow uses a single launcher:
 Start-All.cmd
 ```
 
-It checks Node.js, installs/synchronizes npm dependencies, prepares the local configuration, builds RDC-X, restarts the local service when necessary, and opens the browser.
+It checks Node.js, installs/synchronizes npm dependencies, installs the official OpenAI `tunnel-client` locally when missing, prepares the local configuration, builds RDC-X, restarts the local service when necessary, and opens the browser.
+
+To install or repair only `tunnel-client`, run:
+
+```powershell
+node scripts\install-tunnel.mjs
+```
+
+No system-wide installation or PATH change is required. The executable and release metadata are stored under `tools\`, which is gitignored.
 
 ## First run
 
@@ -208,6 +218,19 @@ git pull
 ```
 
 `Start-All.cmd` rebuilds the project and restarts the running local backend so the browser UI and backend stay on the same version.
+
+## Troubleshooting `spawn tunnel-client ENOENT`
+
+This error means Windows could not find the `tunnel-client` executable. It is not a Tunnel ID or Runtime API Key validation error.
+
+From the RDC-X directory, run:
+
+```powershell
+node scripts\install-tunnel.mjs
+.\tools\tunnel-client.exe --version
+```
+
+Then restart `Start-All.cmd` and connect again. If you intentionally keep `tunnel-client.exe` elsewhere, set `TUNNEL_CLIENT_PATH` for that RDC-X process to the full executable path.
 
 ## Diagnostics
 
