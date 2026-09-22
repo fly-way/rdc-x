@@ -1,15 +1,15 @@
 # RDC-X vs Remote Desktop Commander
 
-This document tracks the replacement target for RDC-X v0.3. It compares capability families rather than preserving Desktop Commander's argument schema.
+This document tracks the replacement target for RDC-X v0.3.1. It compares capability families rather than preserving Desktop Commander's argument schema.
 
 | Capability | Remote Desktop Commander baseline | RDC-X v0.3 |
 | --- | --- | --- |
 | Health / identity | device list, identity, ping | `ping`, `who_am_i`, `list_devices`, `get_capabilities` |
-| Authorized filesystem | read/write/list/move/edit | read/write/list/edit plus `copy_path`/`move_path`/`delete_path` for files or directories, recovery restore |
-| Search | filename/content search | literal or regex filename/content search, glob filters, context lines, generated/hidden controls |
-| Terminal | managed commands and interactive sessions | managed sessions, explicit cwd, timeout, interactive stdin, PowerShell/pwsh/cmd/sh/bash selection |
+| Authorized filesystem | read/write/list/move/edit | read/write/list/edit plus `copy_path`/`move_path`/`delete_path`, recovery restore and `hash_file` |
+| Search | filename/content search | literal or regex filename/content search, glob filters, context lines, generated/hidden controls and `wait_search` |
+| Terminal | managed commands and interactive sessions | managed sessions, explicit cwd, timeout, interactive stdin, PowerShell/pwsh/cmd/sh/bash selection and `wait_process` |
 | Process inspection | list/kill processes | system info, list processes, guarded kill, managed-session ownership |
-| Desktop | not part of the current generic RDC connector surface | displays, screenshots (display/region/window), windows, focus, cursor, mouse, scroll, keyboard, clipboard |
+| Desktop | not part of the current generic RDC connector surface | displays, screenshots (display/region/window), window metadata/bounds, focus, cursor, mouse, scroll, keyboard, clipboard |
 | Public network text | not part of the generic connector surface | bounded HTTP/HTTPS fetch with private-network/SSRF protections |
 | PDF | generic file/PDF support | text extraction, create, merge, delete pages, extract pages, insert PDF |
 | Excel | generic spreadsheet handling | explicit XLSX read/create/range edit |
@@ -18,6 +18,7 @@ This document tracks the replacement target for RDC-X v0.3. It compares capabili
 | Recovery | implementation-specific backups | explicit private recovery store with list/restore tools |
 | Access policy | remote config surface | local Dashboard plus `set_config_value` with mandatory local approval |
 | Transport | Remote Desktop Commander relay | OpenAI Secure MCP Tunnel with loopback-only MCP target |
+| Diagnostics | basic connector/device health | `ping`, capability manifest and `run_diagnostics` for roots, shells, Git and tunnel-client |
 | Audit / approvals | connector-specific | per-authorization audit trail, local one-shot approvals, optional in-memory trusted session |
 
 ## Intentional differences
