@@ -2,21 +2,21 @@
 
 RDC-X is a self-hosted MCP gateway that lets ChatGPT work with an authorized Windows computer through controlled local interfaces.
 
-Current version: **0.2.0**
+Current version: **0.3.0**
 
 The primary connection path is **OpenAI Secure MCP Tunnel**. RDC-X keeps its MCP endpoint on the local loopback interface while the official `tunnel-client` creates the outbound connection to OpenAI.
 
 ## What RDC-X can do
 
-RDC-X currently exposes 60+ MCP tools covering:
+RDC-X v0.3 exposes **90+ native MCP tools** covering:
 
-- files and directories: list, read, write, edit, move, search, backup, restore and soft delete;
-- terminal and managed process sessions;
-- Windows desktop screenshots, window focus, mouse, keyboard and clipboard operations;
+- files and directories: list, read, write, exact edit, copy/move directory trees, regex/literal search, recovery and soft delete;
+- terminal and managed process sessions with PowerShell, pwsh, cmd, sh/bash backends as appropriate;
+- Windows desktop: display/window/region screenshots, window focus, cursor position, mouse, keyboard, scrolling and clipboard operations;
 - system information and guarded process termination;
-- PDF, DOCX and XLSX reading/editing workflows;
+- PDF, DOCX and XLSX workflows, including PDF merge/delete/extract/insert operations;
 - bounded public HTTP/HTTPS text retrieval with private-network protections;
-- Unity Editor workflows such as project discovery, Console, hierarchy, scenes, selection, Game View, Play Mode, GameObjects, transforms and components;
+- Unity Editor workflows including projects, Console, hierarchy, scenes, Game View, Play Mode, GameObjects, transforms, components, serialized properties, AssetDatabase search and prefab workflows;
 - local approval requests, audit events and access-policy controls.
 
 RDC-X is intended for a single authorized computer and personal/private use. It has no account system, subscription layer, payment logic or telemetry.
@@ -188,11 +188,13 @@ ro | F:\Reference
 
 An empty root list denies file access.
 
+If the RDC-X repository itself is inside an explicitly authorized root, its source code can be read and edited through RDC-X. Private runtime state under `.rdc`, common credential files/directories, and the active `tools\\tunnel-client.exe` binary remain protected.
+
 ### Approval modes
 
 The Secure Tunnel connection normally uses per-action approval for protected mutations.
 
-The local owner can temporarily switch the current Tunnel session to trusted mode. Trusted mode is kept in memory only and is reset when RDC-X restarts.
+The local owner can temporarily switch the current Tunnel session to trusted mode. Trusted mode is kept in memory only and is reset when RDC-X restarts. Remote access-policy changes made with `set_config_value` still require explicit local approval even in trusted mode.
 
 ### Terminal security
 
@@ -207,6 +209,8 @@ RDC-X uses Secure MCP Tunnel for transport, but ChatGPT workspace policy still a
 The target ChatGPT workspace must have an RDC-X custom/developer MCP app configured for the same tunnel. If the current workspace member cannot create or publish that app, an authorized workspace administrator/operator must provision it.
 
 The ChatGPT-side app and the OpenAI tunnel resource do not need to be recreated after a normal Windows restart.
+
+After upgrading across an RDC-X **tool-schema version**, refresh/reconfigure the ChatGPT app actions so ChatGPT sees the current native tool definitions. RDC-X v0.3 intentionally does not preserve the old Desktop Commander-compatible argument schema.
 
 ## Updating RDC-X
 
@@ -263,6 +267,7 @@ Start-All.cmd          Windows entry point
 
 - [中文说明](README.zh-CN.md)
 - [Secure MCP Tunnel notes](SECURE-MCP-TUNNEL.md)
+- [Remote Desktop Commander capability comparison](docs/REMOTE-DESKTOP-COMMANDER-PARITY.md)
 
 External references:
 
