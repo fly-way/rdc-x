@@ -124,11 +124,19 @@ export function createMcp(services: Services, owner: string, scopes: string[], a
     'roots','requireWriteApproval','terminalEnabled','systemProcessControlEnabled','desktopControlEnabled','networkFetchEnabled',
     'commandPolicyMode','blockedCommandPatterns','allowedCommandPatterns','maxFileBytes','maxProcessSeconds'
   ]);
-  strictExecMutation('set_config_value', 'Change one remote-access policy value after local review.', { key: configKey, value: z.any() }, async a => {
+  const configValue = z.union([
+    z.boolean(),
+    z.number(),
+    z.string(),
+    z.array(z.string()),
+    z.array(z.object({ path: z.string().min(1).max(4096), write: z.boolean() }))
+  ]);
+  strictExecMutation('set_config_value', 'Change one remote-access policy value after local review. Any successful policy change revokes trusted-session mode.', { key: configKey, value: configValue }, async a => {
     state.saveConfig({ ...state.config, [a.key]: a.value });
+    approvals.resetSessionTrust();
     if (a.key === 'roots') { searches.stopAll(); await processes.stopAll(); }
     if (a.key === 'terminalEnabled' && !state.config.terminalEnabled) await processes.stopAll();
-    return { key: a.key, value: (state.config as any)[a.key] };
+    return { key: a.key, value: (state.config as any)[a.key], sessionApprovalMode: approvals.mode(owner) };
   });
 
   register('list_directory', 'List files and directories under an authorized path.', {
