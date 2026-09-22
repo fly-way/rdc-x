@@ -1,5 +1,7 @@
 import fs from 'node:fs/promises';
+import { createReadStream } from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { random, type State } from './state.js';
 import { PathGuard } from './paths.js';
 
@@ -39,6 +41,21 @@ export class FileService {
       createdAt: stat.birthtime.toISOString(),
       modifiedAt: stat.mtime.toISOString()
     };
+  }
+
+  async hash(input: string, algorithm: 'sha256' | 'sha512' = 'sha256', maxBytes = 512 * 1024 * 1024) {
+    const target = await this.guard.resolve(input);
+    const stat = await fs.stat(target);
+    if (!stat.isFile()) throw new Error('Expected a regular file.');
+    if (stat.size > maxBytes) throw new Error('File exceeds the requested hashing size limit.');
+    const digest = crypto.createHash(algorithm);
+    await new Promise<void>((resolve, reject) => {
+      const stream = createReadStream(target);
+      stream.on('data', chunk => digest.update(chunk));
+      stream.on('error', reject);
+      stream.on('end', resolve);
+    });
+    return { path: target, bytes: stat.size, algorithm, digest: digest.digest('hex') };
   }
 
   async list(input: string, depth = 1, limit = 500) {
