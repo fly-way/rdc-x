@@ -173,9 +173,9 @@ export function createMcp(services: Services, owner: string, scopes: string[], a
   }, a => files.edit(a.path, a.oldText, a.newText, a.expectedReplacements));
 
   mutate('create_directory', 'Create a directory tree inside a writable root.', { path: p }, a => files.mkdir(a.path));
-  mutate('copy_file', 'Copy one file or directory tree without overwriting the destination.', { source: p, destination: p }, a => files.copy(a.source, a.destination));
-  mutate('move_file', 'Move or rename one file or directory tree without overwriting the destination.', { source: p, destination: p }, a => files.move(a.source, a.destination));
-  mutate('delete_file', 'Soft-delete one file or directory into the private RDC-X recovery store.', { path: p }, a => files.trash(a.path));
+  mutate('copy_path', 'Copy one file or directory tree without overwriting the destination.', { source: p, destination: p }, a => files.copy(a.source, a.destination));
+  mutate('move_path', 'Move or rename one file or directory tree without overwriting the destination.', { source: p, destination: p }, a => files.move(a.source, a.destination));
+  mutate('delete_path', 'Soft-delete one file or directory into the private RDC-X recovery store.', { path: p }, a => files.trash(a.path));
   register('list_recovery_items', 'List recent soft-deleted recovery items.', { limit: z.number().int().min(1).max(500).default(100) }, 'rdc.read', a => files.listTrash(a.limit));
   mutate('restore_recovery_item', 'Restore a soft-deleted recovery item to a new authorized destination.', {
     trashId: z.string().min(1).max(300), destination: p
