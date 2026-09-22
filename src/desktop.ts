@@ -5,7 +5,7 @@ import { promisify } from 'node:util';
 import type { State } from './state.js';
 
 const execFileAsync=promisify(execFile);
-const ps=async(script:string)=>execFileAsync('powershell.exe',['-NoLogo','-NoProfile','-NonInteractive','-Command',script],{maxBuffer:8*1024*1024,windowsHide:true});
+const ps=async(script:string)=>execFileAsync('powershell.exe',['-NoLogo','-NoProfile','-NonInteractive','-Command','[Console]::OutputEncoding=[Text.Encoding]::UTF8; '+script],{maxBuffer:8*1024*1024,windowsHide:true});
 
 export class DesktopService {
   constructor(private state:State){}
