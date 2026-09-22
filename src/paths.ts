@@ -7,7 +7,7 @@ export function within(parent: string, child: string) {
   return relative === '' || (!path.isAbsolute(relative) && relative !== '..' && !relative.startsWith(`..${path.sep}`));
 }
 
-const secretNames = /^(\.env(?:\..*)?|\.ssh|\.aws|\.azure|\.gnupg|\.rdc|\.npmrc|\.pypirc|\.netrc|\.git-credentials|id_rsa|id_ed25519)$/i;
+const secretNames = /^(\.env(?:\..*)?|\.ssh|\.aws|\.azure|\.gnupg|\.rdc|\.git|\.npmrc|\.pypirc|\.netrc|\.git-credentials|id_rsa|id_ed25519)$/i;
 
 export class PathGuard {
   constructor(readonly state: State) {}
