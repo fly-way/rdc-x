@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import ExcelJS from 'exceljs';
 import mammoth from 'mammoth';
 import PDFDocument from 'pdfkit';
@@ -49,7 +50,8 @@ export class DocumentService {
     const target = await this.file(input);
     const bytes = await fs.readFile(target);
     const pdfjs: any = await import('pdfjs-dist/legacy/build/pdf.mjs');
-    const task = pdfjs.getDocument({ data: new Uint8Array(bytes), useWorkerFetch: false, isEvalSupported: false });
+    const standardFontDataUrl = path.dirname(fileURLToPath(import.meta.resolve('pdfjs-dist/package.json'))) + path.sep + 'standard_fonts' + path.sep;
+    const task = pdfjs.getDocument({ data: new Uint8Array(bytes), useWorkerFetch: false, isEvalSupported: false, standardFontDataUrl });
     const pdf = await task.promise;
     const pages: any[] = [];
     const end = Math.min(pdf.numPages, startPage + pageCount - 1);
