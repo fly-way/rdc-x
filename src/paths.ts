@@ -17,7 +17,8 @@ export class PathGuard {
     if (process.platform === 'win32') {
       if (input.startsWith('\\\\') || input.startsWith('//') || /:(?![\\/])/.test(input.slice(2)))
         throw new Error('UNC, device paths and alternate data streams are not allowed.');
-      if (input.split(/[\\/]/).some(p => /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\.|$)/i.test(p) || /[. ]$/.test(p)))
+      if (input.split(/[\\/]/).some(p =>
+        /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\.|$)/i.test(p) || (p !== '.' && /[. ]$/.test(p))))
         throw new Error('Windows device names and ambiguous trailing characters are not allowed.');
     }
 
