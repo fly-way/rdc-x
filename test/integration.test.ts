@@ -143,7 +143,7 @@ await test('HTTP, OAuth and real MCP SDK integration', async t => {
       const write: any = await client.callTool({ name: 'write_file', arguments: { path: 'tunnel-trusted.txt', content: 'trusted', mode: 'create' } });
       assert.equal(JSON.parse(write.content[0].text).path.endsWith('tunnel-trusted.txt'), true);
 
-      f.state.config.terminalEnabled = true;
+      app.state.config.terminalEnabled = true;
       const started: any = await client.callTool({ name: 'start_process', arguments: { command: "Write-Output 'native-process-ok'", timeoutSeconds: 10 } });
       const session = JSON.parse(started.content[0].text);
       assert.equal(typeof session.sessionId, 'string');
