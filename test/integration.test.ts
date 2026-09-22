@@ -93,8 +93,8 @@ await test('HTTP, OAuth and real MCP SDK integration', async t => {
     await client.connect(new StreamableHTTPClientTransport(new URL(origin + '/mcp'), { requestInit: { headers: { Authorization: 'Bearer ' + full.token.access_token } } }));
     try {
       const tools = (await client.listTools()).tools;
-      assert.ok(tools.length >= 90);
-      for (const name of ['who_am_i','get_capabilities','set_config_value','copy_path','move_path','delete_path','restore_recovery_item','read_pdf','pdf_extract_pages','pdf_insert_pdf','edit_docx_text','read_url','list_processes','list_displays','desktop_screenshot_region','mouse_scroll','unity_get_hierarchy','unity_set_transform','unity_get_serialized_properties','unity_set_serialized_property','unity_find_assets','unity_instantiate_prefab','unity_save_prefab'])
+      assert.ok(tools.length >= 95);
+      for (const name of ['who_am_i','get_capabilities','set_config_value','hash_file','copy_path','move_path','delete_path','restore_recovery_item','read_pdf','pdf_extract_pages','pdf_insert_pdf','edit_docx_text','read_url','wait_search','wait_process','run_diagnostics','list_processes','list_displays','get_window_info','desktop_screenshot_region','mouse_scroll','unity_get_hierarchy','unity_set_transform','unity_get_serialized_properties','unity_set_serialized_property','unity_find_assets','unity_instantiate_prefab','unity_save_prefab'])
         assert.ok(tools.some(tool => tool.name === name), 'missing tool: ' + name);
       const byName = Object.fromEntries(tools.map(tool => [tool.name, tool]));
       const processSchema:any = byName.start_process.inputSchema;
@@ -107,7 +107,10 @@ await test('HTTP, OAuth and real MCP SDK integration', async t => {
       assert.ok(searchSchema.properties.mode);
       assert.ok(searchSchema.properties.filePatterns);
       assert.equal('searchType' in searchSchema.properties, false);
-      const ping: any = await client.callTool({ name: 'ping', arguments: {} }); assert.equal(JSON.parse(ping.content[0].text).status, 'online');
+      const ping: any = await client.callTool({ name: 'ping', arguments: {} });
+      const pingValue = JSON.parse(ping.content[0].text);
+      assert.equal(pingValue.status, 'online');
+      assert.equal(pingValue.toolSchemaVersion, 2);
       const write: any = await client.callTool({ name: 'write_file', arguments: { path: 'sdk-test.txt', content: 'written via approved MCP', mode: 'create' } });
       const pending = JSON.parse(write.content[0].text); assert.equal(pending.status, 'approval_required');
       await assert.rejects(() => app.files.info('sdk-test.txt'));
@@ -148,15 +151,18 @@ await test('HTTP, OAuth and real MCP SDK integration', async t => {
       assert.equal(started.isError, undefined, started.content?.[0]?.text);
       const session = JSON.parse(started.content[0].text);
       assert.equal(typeof session.sessionId, 'string', started.content?.[0]?.text);
-      let processOutput = '';
-      for (let attempt = 0; attempt < 40 && !/native-process-ok/.test(processOutput); attempt++) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-        const output: any = await client.callTool({ name: 'read_process_output', arguments: { sessionId: session.sessionId, offset: 0, length: 20000 } });
-        const snapshot = JSON.parse(output.content[0].text);
-        processOutput = snapshot.output ?? '';
-        if (snapshot.state !== 'running' && !processOutput) break;
-      }
-      assert.match(processOutput, /native-process-ok/);
+      const waited: any = await client.callTool({ name: 'wait_process', arguments: { sessionId: session.sessionId, timeoutMs: 10000, offset: 0, length: 20000 } });
+      const waitedSnapshot = JSON.parse(waited.content[0].text);
+      assert.notEqual(waitedSnapshot.state, 'running');
+      assert.match(waitedSnapshot.output ?? '', /native-process-ok/);
+
+      const hash: any = await client.callTool({ name: 'hash_file', arguments: { path: 'tunnel-trusted.txt', algorithm: 'sha256', maxBytes: 1024 } });
+      assert.match(JSON.parse(hash.content[0].text).digest, /^[a-f0-9]{64}$/);
+
+      const diagnostics: any = await client.callTool({ name: 'run_diagnostics', arguments: {} });
+      const diagnosticValue = JSON.parse(diagnostics.content[0].text);
+      assert.equal(diagnosticValue.toolSchemaVersion, 2);
+      assert.equal(diagnosticValue.roots[0].exists, true);
 
       const strictConfig: any = await client.callTool({ name: 'set_config_value', arguments: { key: 'networkFetchEnabled', value: true } });
       const strictPending = JSON.parse(strictConfig.content[0].text);
