@@ -10,7 +10,7 @@ export class SystemService {
   }
   async listProcesses(limit=200) {
     if (process.platform === 'win32') {
-      const script = "Get-Process | Sort-Object CPU -Descending | Select-Object -First "+limit+" Id,ProcessName,CPU,WorkingSet64,MainWindowTitle | ConvertTo-Json -Compress";
+      const script = "[Console]::OutputEncoding=[Text.Encoding]::UTF8; Get-Process | Sort-Object CPU -Descending | Select-Object -First "+limit+" Id,ProcessName,CPU,WorkingSet64,MainWindowTitle | ConvertTo-Json -Compress";
       const { stdout } = await execFileAsync('powershell.exe',['-NoLogo','-NoProfile','-NonInteractive','-Command',script],{maxBuffer:2*1024*1024,windowsHide:true});
       const parsed = stdout.trim() ? JSON.parse(stdout) : [];
       return { processes: Array.isArray(parsed)?parsed:[parsed] };
@@ -21,7 +21,7 @@ export class SystemService {
   async killProcess(pid:number) {
     if (!Number.isInteger(pid) || pid <= 0 || pid === process.pid) throw new Error('Invalid or protected PID.');
     if (process.platform === 'win32') {
-      const { stdout } = await execFileAsync('powershell.exe',['-NoLogo','-NoProfile','-NonInteractive','-Command',`$p=Get-Process -Id ${pid} -ErrorAction Stop; [pscustomobject]@{Id=$p.Id;Name=$p.ProcessName}|ConvertTo-Json -Compress`],{windowsHide:true});
+      const { stdout } = await execFileAsync('powershell.exe',['-NoLogo','-NoProfile','-NonInteractive','-Command',`[Console]::OutputEncoding=[Text.Encoding]::UTF8; $p=Get-Process -Id ${pid} -ErrorAction Stop; [pscustomobject]@{Id=$p.Id;Name=$p.ProcessName}|ConvertTo-Json -Compress`],{windowsHide:true});
       const p=JSON.parse(stdout.trim()); if (critical.has(String(p.Name).toLowerCase())) throw new Error('Refusing to terminate a protected Windows process.');
       await execFileAsync('taskkill.exe',['/PID',String(pid),'/T','/F'],{windowsHide:true}); return { pid, name:p.Name, terminated:true };
     }
