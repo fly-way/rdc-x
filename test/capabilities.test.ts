@@ -8,6 +8,9 @@ import { DocumentService } from '../src/documents.js';
 import { NetworkService } from '../src/network.js';
 import { Approvals } from '../src/approvals.js';
 import { UnityService } from '../src/unity.js';
+import { ProcessService } from '../src/processes.js';
+import { SearchService } from '../src/search.js';
+import { SystemService } from '../src/system.js';
 
 await test('expanded capabilities', async t => {
   await t.test('session trust bypasses approvals only for that in-memory authorization', async () => {
@@ -52,6 +55,46 @@ await test('expanded capabilities', async t => {
       const changed:any=await docs.editDocxText('note.docx','World','RDCX',1);
       assert.equal(changed.replacements,1);
       word=await docs.readDocx('note.docx'); assert.match(word.text,/Hello RDCX/);
+    } finally { f.clean(); }
+  });
+
+  await t.test('hash, search wait, process wait and diagnostics form a reliable execution loop', async () => {
+    const f=fixture();
+    try {
+      const files=new FileService(f.state);
+      await fs.writeFile(path.join(f.workspace,'hash.txt'),'abc');
+      const hashed:any=await files.hash('hash.txt','sha256',1024);
+      assert.equal(hashed.digest,'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');
+
+      await fs.writeFile(path.join(f.workspace,'search-me.txt'),'alpha\nbeta target\ngamma');
+      const searches=new SearchService(files);
+      const started=await searches.start('owner',{
+        path:f.workspace,pattern:'target',type:'content',mode:'literal',ignoreCase:true,filePatterns:['*.txt'],
+        includeHidden:false,includeGenerated:false,contextLines:1,maxDepth:4,maxResults:20,timeoutSeconds:5
+      });
+      const search:any=await searches.wait(started.searchId,'owner',5000,0,20);
+      assert.notEqual(search.status,'running');
+      assert.equal(search.totalResults,1);
+      assert.match(search.results[0].content,/target/);
+
+      f.state.config.terminalEnabled=true;
+      const terminal=new ProcessService(f.state,files.guard);
+      try {
+        const command=process.platform==='win32'?"Write-Output 'wait-process-ok'":"printf 'wait-process-ok'";
+        const session=await terminal.start('owner',command,f.workspace,10);
+        const waited:any=await terminal.wait(session.sessionId,'owner',10000,0,20000);
+        assert.notEqual(waited.state,'running');
+        assert.match(waited.output,/wait-process-ok/);
+      } finally {
+        await terminal.stopAll();
+        f.state.config.terminalEnabled=false;
+      }
+
+      const diagnostics:any=await new SystemService().diagnostics(f.state,f.base);
+      assert.equal(diagnostics.roots[0].exists,true);
+      assert.equal(diagnostics.roots[0].directory,true);
+      assert.ok(Array.isArray(diagnostics.warnings));
+      assert.ok(diagnostics.commands);
     } finally { f.clean(); }
   });
 
