@@ -5,7 +5,7 @@ This document tracks the replacement target for RDC-X v0.3. It compares capabili
 | Capability | Remote Desktop Commander baseline | RDC-X v0.3 |
 | --- | --- | --- |
 | Health / identity | device list, identity, ping | `ping`, `who_am_i`, `list_devices`, `get_capabilities` |
-| Authorized filesystem | read/write/list/move/edit | read/write/list/edit plus file & directory copy/move, soft delete, recovery restore |
+| Authorized filesystem | read/write/list/move/edit | read/write/list/edit plus `copy_path`/`move_path`/`delete_path` for files or directories, recovery restore |
 | Search | filename/content search | literal or regex filename/content search, glob filters, context lines, generated/hidden controls |
 | Terminal | managed commands and interactive sessions | managed sessions, explicit cwd, timeout, interactive stdin, PowerShell/pwsh/cmd/sh/bash selection |
 | Process inspection | list/kill processes | system info, list processes, guarded kill, managed-session ownership |
