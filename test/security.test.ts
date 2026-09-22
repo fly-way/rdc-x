@@ -107,6 +107,14 @@ await test('filesystem and consent boundaries', async t => {
     await eventually(() => search.get(job.searchId, 'owner').status !== 'running');
     assert.ok(search.get(job.searchId, 'owner').totalResults >= 1); assert.throws(() => search.get(job.searchId, 'other'));
   });
+  await t.test('directory tree operations cannot smuggle protected files', async () => {
+    await files.mkdir('protected-tree');
+    await fs.writeFile(path.join(f.workspace, 'protected-tree', '.env'), 'SECRET=inside-tree');
+    await assert.rejects(() => files.copy('protected-tree', 'protected-copy'), /protected credentials/i);
+    await assert.rejects(() => files.move('protected-tree', 'protected-moved'), /protected credentials/i);
+    await assert.rejects(() => files.trash('protected-tree'), /protected credentials/i);
+    assert.equal(await fs.readFile(path.join(f.workspace, 'protected-tree', '.env'), 'utf8'), 'SECRET=inside-tree');
+  });
   await t.test('file size and binary limits are enforced', async () => {
     await fs.writeFile(path.join(f.workspace, 'binary.dat'), Buffer.from([65, 0, 66])); await assert.rejects(() => files.read('binary.dat'));
     const previous = f.state.config.maxFileBytes; f.state.config.maxFileBytes = 2;
