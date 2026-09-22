@@ -138,13 +138,15 @@ export class FileService {
     }
   }
 
-  private async assertSafeTree(target: string, counter = { value: 0 }): Promise<void> {
+  private async assertSafeTree(target: string, counter = { value: 0 }, applyPathPolicy = true): Promise<void> {
     if (++counter.value > 100000) throw new Error('Directory tree is too large to validate safely.');
+    if (applyPathPolicy) await this.guard.resolve(target);
     const stat = await fs.lstat(target);
     if (stat.isSymbolicLink()) throw new Error('Symbol links and junctions cannot be copied or moved.');
     if (stat.isFile() && stat.nlink > 1) throw new Error('Hard-linked files cannot be copied or moved.');
     if (!stat.isDirectory()) return;
-    for (const entry of await fs.readdir(target)) await this.assertSafeTree(path.join(target, entry), counter);
+    for (const entry of await fs.readdir(target))
+      await this.assertSafeTree(path.join(target, entry), counter, applyPathPolicy);
   }
 
   async copy(source: string, destination: string) {
@@ -182,8 +184,13 @@ export class FileService {
     const trashId = `${Date.now()}-${random(8)}-${path.basename(target)}`;
     const recoveryPath = path.join(this.state.dataDir, 'trash', trashId);
     await fs.mkdir(path.dirname(recoveryPath), { recursive: true });
-    await fs.cp(target, recoveryPath, { recursive: stat.isDirectory(), errorOnExist: true, force: false, dereference: false });
-    await fs.rm(target, { recursive: stat.isDirectory(), force: false });
+    try {
+      await fs.rename(target, recoveryPath);
+    } catch (e: any) {
+      if (e.code !== 'EXDEV') throw e;
+      await fs.cp(target, recoveryPath, { recursive: stat.isDirectory(), errorOnExist: true, force: false, dereference: false });
+      await fs.rm(target, { recursive: stat.isDirectory(), force: false });
+    }
     this.state.audit('file_trash', 'created', { original: target, trashId });
     return { path: target, trashId, type: stat.isDirectory() ? 'directory' : 'file', permanentlyDeleted: false };
   }
@@ -207,7 +214,7 @@ export class FileService {
     const target = await this.guard.resolve(destination, true, true);
     await this.guard.resolve(path.dirname(target), true);
     await this.assertMissing(target);
-    await this.assertSafeTree(source);
+    await this.assertSafeTree(source, { value: 0 }, false);
     await fs.cp(source, target, { recursive: stat.isDirectory(), errorOnExist: true, force: false, dereference: false });
     return { trashId, destination: target, type: stat.isDirectory() ? 'directory' : 'file' };
   }
