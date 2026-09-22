@@ -148,9 +148,15 @@ await test('HTTP, OAuth and real MCP SDK integration', async t => {
       assert.equal(started.isError, undefined, started.content?.[0]?.text);
       const session = JSON.parse(started.content[0].text);
       assert.equal(typeof session.sessionId, 'string', started.content?.[0]?.text);
-      await new Promise(resolve => setTimeout(resolve, 150));
-      const output: any = await client.callTool({ name: 'read_process_output', arguments: { sessionId: session.sessionId, offset: 0, length: 20000 } });
-      assert.match(JSON.parse(output.content[0].text).output, /native-process-ok/);
+      let processOutput = '';
+      for (let attempt = 0; attempt < 40 && !/native-process-ok/.test(processOutput); attempt++) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        const output: any = await client.callTool({ name: 'read_process_output', arguments: { sessionId: session.sessionId, offset: 0, length: 20000 } });
+        const snapshot = JSON.parse(output.content[0].text);
+        processOutput = snapshot.output ?? '';
+        if (snapshot.state !== 'running' && !processOutput) break;
+      }
+      assert.match(processOutput, /native-process-ok/);
 
       const strictConfig: any = await client.callTool({ name: 'set_config_value', arguments: { key: 'networkFetchEnabled', value: true } });
       const strictPending = JSON.parse(strictConfig.content[0].text);
