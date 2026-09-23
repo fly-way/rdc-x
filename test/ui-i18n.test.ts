@@ -31,3 +31,12 @@ await test('dashboard uses a full-width, readable glass-style desktop layout', (
   assert.match(css, /backdrop-filter:blur\(24px\)/);
   assert.match(css, /border-radius:18px/);
 });
+
+await test('dashboard exposes the bilingual diagnostics view and request table', () => {
+  assert.match(html, /data-view="diagnostics"/);
+  assert.match(html, /id="view-diagnostics"/);
+  assert.match(html, /id="diagnosticRequests"/);
+  assert.match(html, /id="gateDiagnostics"/);
+  assert.match(app, /'nav\.diagnostics':'系统诊断'/);
+  assert.match(app, /'nav\.diagnostics':'System diagnostics'/);
+});

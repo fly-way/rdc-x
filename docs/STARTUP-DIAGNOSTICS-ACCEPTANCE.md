@@ -4,18 +4,18 @@ This checklist defines the expected verification flow for the diagnostics UI.
 
 ## Local service chain
 
-- [ ] RDC-X backend process is loaded
-- [ ] Dashboard API listener is reachable
-- [ ] Secure MCP Tunnel listener is reachable
-- [ ] tunnel-client process is running
-- [ ] tunnel-client reports live state
-- [ ] Secure MCP Tunnel reports ready state
+- [x] RDC-X backend process is loaded
+- [x] Dashboard API listener is reachable
+- [x] Secure MCP Tunnel listener is reachable
+- [x] tunnel-client process is running
+- [x] tunnel-client reports live state
+- [x] Secure MCP Tunnel reports ready state
 
 ## MCP chain
 
-- [ ] Local MCP health endpoint responds
-- [ ] MCP initialize request succeeds
-- [ ] MCP tools/list request succeeds
+- [x] Local MCP health endpoint responds
+- [x] MCP initialize request succeeds
+- [x] MCP tools/list request succeeds
 
 ## Failure classification
 

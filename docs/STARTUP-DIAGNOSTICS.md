@@ -31,6 +31,37 @@ RDC-X can be healthy at one layer while failing at another layer. The startup di
 - Local MCP OK + ChatGPT call failure: check Secure MCP Tunnel / workspace MCP app binding.
 - ChatGPT receives rate limits: inspect tunnel request rate and retry behavior.
 
+## Diagnostics API
+
+The authenticated local Dashboard exposes `GET /api/diagnostics`. It returns:
+
+- Seven component checks for the backend, Dashboard API, MCP listener, tunnel-client, Secure Tunnel, MCP initialize and `tools/list`
+- Four independent layer results for RDC-X, Tunnel, MCP and OpenAI upstream
+- The latest 25 real MCP requests with time, listener, JSON-RPC method, HTTP status, duration and a safely truncated error
+- Safe counters for authorized clients and discovered MCP tools
+
+The MCP self-test uses a private in-memory probe marker. Synthetic `/health`, `initialize` and `tools/list` calls are excluded from recent request history and from the normal POST execution rate limit.
+
+`GET /mcp` is the optional Streamable HTTP SSE probe. A stateless RDC-X listener returns `405 Method Not Allowed`, as permitted by the protocol. These probes do not consume the POST execution request budget, preventing a healthy probe loop from turning into a misleading `429`.
+
+## Dashboard and CLI
+
+The **System diagnostics** page is available from the Dashboard navigation. A compact version is also available on the Secure Tunnel sign-in screen so tunnel failures can be inspected before the Dashboard unlocks.
+
+Run `npm run doctor` while RDC-X is running for the terminal summary. A healthy result ends with:
+
+```text
+RDC-X Doctor
+
+[OK] Backend
+[OK] Dashboard
+[OK] MCP
+[OK] Tunnel
+[OK] Tools
+
+Healthy
+```
+
 ## Security requirements
 
 Diagnostics must never expose:

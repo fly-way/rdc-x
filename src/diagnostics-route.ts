@@ -1,5 +1,5 @@
 import type { Express, Request, Response } from 'express';
-import { buildDiagnosticsReport } from './diagnostics.js';
+import type { DiagnosticsReport } from './diagnostics.js';
 
 /**
  * Registers the local dashboard diagnostics endpoint.
@@ -9,11 +9,11 @@ import { buildDiagnosticsReport } from './diagnostics.js';
  * after the local admin authentication middleware.
  */
 export function registerDiagnosticsRoute(app: Express, deps: {
-  getDiagnostics: () => Promise<ReturnType<typeof buildDiagnosticsReport>>;
+  getDiagnostics: (force?: boolean) => Promise<DiagnosticsReport>;
 }) {
-  app.get('/api/diagnostics', async (_req: Request, res: Response) => {
+  app.get('/api/diagnostics', async (req: Request, res: Response) => {
     try {
-      res.json(await deps.getDiagnostics());
+      res.json(await deps.getDiagnostics(req.query.refresh === '1'));
     } catch (error: any) {
       res.status(500).json({
         ok: false,

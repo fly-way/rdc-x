@@ -156,7 +156,8 @@ await test('HTTP, OAuth and real MCP SDK integration', async t => {
       assert.equal(JSON.parse(write.content[0].text).path.endsWith('tunnel-trusted.txt'), true);
 
       app.state.config.terminalEnabled = true;
-      const started: any = await client.callTool({ name: 'start_process', arguments: { command: "Write-Output 'native-process-ok'", timeoutSeconds: 10 } });
+      const command = process.platform === 'win32' ? "Write-Output 'native-process-ok'" : "printf 'native-process-ok\\n'";
+      const started: any = await client.callTool({ name: 'start_process', arguments: { command, timeoutSeconds: 10 } });
       assert.equal(started.isError, undefined, started.content?.[0]?.text);
       const session = JSON.parse(started.content[0].text);
       assert.equal(typeof session.sessionId, 'string', started.content?.[0]?.text);

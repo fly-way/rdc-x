@@ -1,60 +1,125 @@
-import http from 'node:http';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StreamableHTTPClientTransport, StreamableHTTPError } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+
+export type McpSelfTestCheck = {
+  id: 'mcp_listener' | 'mcp_initialize' | 'tools_list';
+  name: string;
+  ok: boolean;
+  detail: string;
+  statusCode?: number;
+};
 
 export type McpSelfTestResult = {
   ok: boolean;
   endpoint: string;
-  checks: Array<{
-    id: string;
-    ok: boolean;
-    detail: string;
-  }>;
+  checks: McpSelfTestCheck[];
+  toolCount: number;
   generatedAt: string;
 };
 
-function requestJson(url: string): Promise<{ status: number; body: unknown }> {
-  return new Promise((resolve, reject) => {
-    const req = http.get(url, res => {
-      let data = '';
-      res.on('data', chunk => data += String(chunk));
-      res.on('end', () => {
-        let body: unknown = data;
-        try { body = JSON.parse(data); } catch {}
-        resolve({ status: res.statusCode ?? 0, body });
-      });
-    });
-    req.on('error', reject);
-    req.setTimeout(3000, () => {
-      req.destroy(new Error('timeout'));
-    });
-  });
+function errorDetail(error: unknown) {
+  return (error instanceof Error ? error.message : String(error)).slice(0, 240);
+}
+
+function errorStatus(error: unknown) {
+  return error instanceof StreamableHTTPError && typeof error.code === 'number' && error.code > 0
+    ? error.code
+    : undefined;
 }
 
 /**
- * Lightweight local diagnostic. This intentionally checks the local listener,
- * not OpenAI connectivity, so failures can be separated from tunnel issues.
+ * Exercises the same stateless Streamable HTTP endpoint used by tunnel-client.
+ * The private probe header lets app.ts omit these synthetic requests from the
+ * recent ChatGPT request history; it does not grant access to any endpoint.
  */
-export async function runMcpSelfTest(endpoint = 'http://127.0.0.1:47833/health'): Promise<McpSelfTestResult> {
-  const checks: McpSelfTestResult['checks'] = [];
+export async function runMcpSelfTest(options: {
+  port: number;
+  probeToken: string;
+  timeoutMs?: number;
+}): Promise<McpSelfTestResult> {
+  const endpoint = `http://127.0.0.1:${options.port}`;
+  const timeoutMs = options.timeoutMs ?? 2000;
+  const headers = { 'X-RDC-Diagnostics-Probe': options.probeToken };
+  const checks: McpSelfTestCheck[] = [];
+  let toolCount = 0;
 
   try {
-    const result = await requestJson(endpoint);
-    checks.push({
-      id: 'mcp_health_endpoint',
-      ok: result.status === 200,
-      detail: result.status === 200 ? 'Local MCP listener responded' : `HTTP ${result.status}`
+    const response = await fetch(endpoint + '/health', {
+      headers,
+      signal: AbortSignal.timeout(timeoutMs)
     });
+    checks.push({
+      id: 'mcp_listener',
+      name: 'MCP Listener',
+      ok: response.ok,
+      statusCode: response.status,
+      detail: response.ok ? `Listening on 127.0.0.1:${options.port}` : `Health check returned HTTP ${response.status}`
+    });
+    await response.body?.cancel();
   } catch (error) {
     checks.push({
-      id: 'mcp_health_endpoint',
+      id: 'mcp_listener',
+      name: 'MCP Listener',
       ok: false,
-      detail: error instanceof Error ? error.message : String(error)
+      detail: errorDetail(error)
     });
   }
 
+  const transport = new StreamableHTTPClientTransport(new URL(endpoint + '/mcp'), {
+    requestInit: {
+      headers,
+      signal: AbortSignal.timeout(timeoutMs)
+    }
+  });
+  const client = new Client({ name: 'rdcx-diagnostics', version: '1' });
+  let initialized = false;
+
+  try {
+    await client.connect(transport);
+    initialized = true;
+    checks.push({
+      id: 'mcp_initialize',
+      name: 'MCP Initialize',
+      ok: true,
+      detail: 'MCP initialize completed'
+    });
+
+    const tools = (await client.listTools()).tools;
+    toolCount = tools.length;
+    checks.push({
+      id: 'tools_list',
+      name: 'Tools/List',
+      ok: tools.length > 0,
+      detail: tools.length > 0 ? `${tools.length} tools available` : 'MCP returned an empty tool list'
+    });
+  } catch (error) {
+    const detail = errorDetail(error);
+    const statusCode = errorStatus(error);
+    if (!initialized) {
+      checks.push({
+        id: 'mcp_initialize',
+        name: 'MCP Initialize',
+        ok: false,
+        detail,
+        ...(statusCode ? { statusCode } : {})
+      });
+    }
+    checks.push({
+      id: 'tools_list',
+      name: 'Tools/List',
+      ok: false,
+      detail: initialized ? detail : 'Skipped because MCP initialize failed',
+      ...(initialized && statusCode ? { statusCode } : {})
+    });
+  } finally {
+    await client.close().catch(() => {});
+  }
+
   return {
-    ok: checks.every(item => item.ok),
-    endpoint,
+    ok: checks.every(check => check.ok),
+    endpoint: endpoint + '/mcp',
     checks,
+    toolCount,
     generatedAt: new Date().toISOString()
   };
 }

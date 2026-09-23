@@ -109,6 +109,14 @@
           <span data-i18n="gate.help1">首次使用需要 OpenAI Platform 创建的 Tunnel ID 和 Runtime API Key。</span>
           <span data-i18n="gate.help2">RDC-X 不会把 Runtime API Key 打印到日志。</span>
         </div>
+        <details id="gateDiagnostics" class="gate-diagnostics">
+          <summary data-i18n="diagnostics.gateSummary">连接失败？查看系统诊断</summary>
+          <div class="gate-diagnostics-head">
+            <span data-i18n="diagnostics.gateHint">本机管理密钥验证后，无需 Tunnel Ready 也可检查各层状态。</span>
+            <button id="gateDiagnosticsRefresh" type="button" class="link-button" data-i18n="diagnostics.refresh">重新检查</button>
+          </div>
+          <div id="gateDiagnosticsChecks" class="diagnostic-checks compact"></div>
+        </details>
       </div>
     </div>
   </section>
@@ -125,6 +133,7 @@
         <button class="nav-item" data-view="requests"><span class="nav-icon">✓</span><span data-i18n="nav.approvals">操作审批</span><em id="navPending" hidden>0</em></button>
         <button class="nav-item" data-view="connections"><span class="nav-icon">↗</span><span data-i18n="nav.connection">连接</span></button>
         <button class="nav-item" data-view="sessions"><span class="nav-icon">⌘</span><span data-i18n="nav.sessions">终端会话</span></button>
+        <button class="nav-item" data-view="diagnostics"><span class="nav-icon">◉</span><span data-i18n="nav.diagnostics">系统诊断</span></button>
         <button class="nav-item" data-view="audit"><span class="nav-icon">≡</span><span data-i18n="nav.audit">审计日志</span></button>
         <button class="nav-item" data-view="settings"><span class="nav-icon">⚙</span><span data-i18n="nav.policy">访问策略</span></button>
       </nav>
@@ -284,6 +293,41 @@
             <div><h1 data-i18n="sessions.title">终端会话</h1><p data-i18n="sessions.subtitle">RDC-X 创建并管理的命令行会话。</p></div>
           </div>
           <article class="panel"><div id="sessionList"></div></article>
+        </section>
+
+        <section id="view-diagnostics" class="view">
+          <div class="page-heading">
+            <div><h1 data-i18n="diagnostics.title">系统诊断</h1><p data-i18n="diagnostics.subtitle">分别检查 RDC-X、Tunnel、本机 MCP 与 OpenAI 上游链路。</p></div>
+            <button id="refreshDiagnostics" class="outline" data-i18n="diagnostics.refresh">重新检查</button>
+          </div>
+
+          <div id="diagnosticLayers" class="diagnostic-layers"></div>
+
+          <article class="panel">
+            <div class="panel-heading">
+              <div><h2 data-i18n="diagnostics.checksTitle">完整检查</h2><p id="diagnosticsGeneratedAt" data-i18n="diagnostics.waiting">等待诊断结果</p></div>
+              <span id="diagnosticsOverall" class="pill">--</span>
+            </div>
+            <div id="diagnosticChecks" class="diagnostic-checks"></div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-heading">
+              <div><h2 data-i18n="diagnostics.requestsTitle">最近 MCP 请求</h2><p data-i18n="diagnostics.requestsHint">记录时间、请求、HTTP 状态与安全截断后的错误，不记录凭据或正文。</p></div>
+            </div>
+            <div class="diagnostic-table-wrap">
+              <table class="diagnostic-table">
+                <thead><tr>
+                  <th data-i18n="diagnostics.time">时间</th>
+                  <th data-i18n="diagnostics.listener">链路</th>
+                  <th data-i18n="diagnostics.request">请求</th>
+                  <th data-i18n="diagnostics.statusCode">状态码</th>
+                  <th data-i18n="diagnostics.error">错误</th>
+                </tr></thead>
+                <tbody id="diagnosticRequests"></tbody>
+              </table>
+            </div>
+          </article>
         </section>
 
         <section id="view-audit" class="view">

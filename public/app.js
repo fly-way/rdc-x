@@ -12,6 +12,8 @@ let lastLists = '';
 let selectedRoots = [];
 let picking = false;
 let currentView = 'overview';
+let diagnosticsBusy = false;
+let diagnosticsSnapshot;
 let locale = localStorage.getItem('rdcx-lang') || (navigator.language?.toLowerCase().startsWith('zh') ? 'zh-CN' : 'en');
 
 const messages = {
@@ -24,7 +26,7 @@ const messages = {
     'gate.title':'连接 Secure Tunnel','gate.intro':'输入 Tunnel ID 与 Runtime API Key。连接达到 <b>Ready</b> 后，RDC-X 才会解锁 Dashboard。','gate.tunnelId':'Tunnel ID','gate.runtimeKey':'Runtime API Key','gate.keyPlaceholder':'输入 Runtime API Key',
     'gate.credentialTitle':'Tunnel ID 会保存在本机','gate.credentialBody':'Runtime API Key 会使用当前 Windows 用户的 DPAPI 加密保存；浏览器也可以自行提供密码自动填充。','gate.submit':'连接并进入 Dashboard','gate.waiting':'等待凭据','gate.help1':'首次使用需要 OpenAI Platform 创建的 Tunnel ID 和 Runtime API Key。','gate.help2':'RDC-X 不会把 Runtime API Key 打印到日志。',
     'gate.running':'Tunnel 已在运行；本次 Start-All 仍需验证凭据后才能进入 Dashboard。','gate.live':'tunnel-client 已启动，正在等待 OpenAI Control Plane Ready。','gate.savedKey':'Tunnel ID 已记录；请输入 Runtime API Key 以解锁本次 Dashboard。','gate.connecting':'正在启动 tunnel-client，并等待 OpenAI Secure MCP Tunnel Ready…','gate.connected':'Tunnel Ready，正在进入 Dashboard…','gate.badTunnelId':'Tunnel ID 格式必须是 tunnel_ + 32 位小写十六进制字符。','gate.keyRequired':'本次启动必须输入 Runtime API Key。',
-    'nav.overview':'概览','nav.approvals':'操作审批','nav.connection':'连接','nav.sessions':'终端会话','nav.audit':'审计日志','nav.policy':'访问策略','sidebar.localService':'本机服务',
+    'nav.overview':'概览','nav.approvals':'操作审批','nav.connection':'连接','nav.sessions':'终端会话','nav.diagnostics':'系统诊断','nav.audit':'审计日志','nav.policy':'访问策略','sidebar.localService':'本机服务',
     'status.tunnelReady':'Tunnel 已就绪','status.thisComputer':'这台电脑','status.ready':'就绪','status.live':'在线','status.offline':'离线',
     'overview.pausedTitle':'远程访问已暂停','overview.pausedBody':'恢复后 ChatGPT 才能调用 RDC-X 工具。','overview.activeTitle':'安全访问已启用','overview.activeBody':'OpenAI Secure MCP Tunnel 已就绪，这台电脑可以接受 ChatGPT 的 RDC-X 工具调用。',
     'overview.tunnelUi':'Tunnel UI','overview.approval':'审批','overview.trusted':'免审批','overview.welcome':'欢迎使用 RDC-X','overview.subtitle':'本机策略决定 ChatGPT 能访问哪些目录、终端与桌面能力。',
@@ -37,6 +39,7 @@ const messages = {
     'connection.pairApprove':'验证码一致，允许连接','connection.trustConfirm':'开启后，Secure MCP Tunnel 的文件修改、终端、系统进程、桌面和 Unity 修改可直接执行，直到服务重启或恢复逐次审批。\n\n确定继续？','connection.heroTrustConfirm':'切换为本次 Tunnel 会话免审批？高权限操作将可直接执行直到服务重启或恢复逐次审批。','connection.reconnectConfirm':'这会断开当前 Secure MCP Tunnel，并返回登录页以重新输入 Tunnel ID 和 Runtime API Key。\n\n确定继续？','connection.legacyConfirm':'确定执行此 Legacy OAuth 操作？',
     'sessions.title':'终端会话','sessions.subtitle':'RDC-X 创建并管理的命令行会话。','sessions.empty':'当前没有 RDC-X 管理的终端会话。','sessions.stop':'停止进程',
     'audit.title':'审计日志','audit.subtitle':'本机记录最近 200 条操作事件，不保存 Token、文件正文或 stdin 正文。',
+    'diagnostics.title':'系统诊断','diagnostics.subtitle':'分别检查 RDC-X、Tunnel、本机 MCP 与 OpenAI 上游链路。','diagnostics.refresh':'重新检查','diagnostics.waiting':'等待诊断结果','diagnostics.checksTitle':'完整检查','diagnostics.requestsTitle':'最近 MCP 请求','diagnostics.requestsHint':'记录时间、请求、HTTP 状态与安全截断后的错误，不记录凭据或正文。','diagnostics.time':'时间','diagnostics.listener':'链路','diagnostics.request':'请求','diagnostics.statusCode':'状态码','diagnostics.error':'错误','diagnostics.none':'尚未观察到真实 MCP 请求。','diagnostics.healthy':'健康','diagnostics.degraded':'存在故障','diagnostics.ok':'正常','diagnostics.failed':'失败','diagnostics.checking':'正在执行 /health、initialize 与 tools/list…','diagnostics.loadFailed':'无法加载诊断结果','diagnostics.noError':'—','diagnostics.gateSummary':'连接失败？查看系统诊断','diagnostics.gateHint':'本机管理密钥验证后，无需 Tunnel Ready 也可检查各层状态。',
     'settings.title':'访问策略','settings.subtitle':'定义 ChatGPT 通过 RDC-X 可以使用的本机能力。','settings.deviceName':'设备名称','settings.legacyOrigin':'Legacy OAuth HTTPS 源地址','settings.legacyOriginHint':'仅兼容旧的 47831 OAuth MCP 流程；不要加 /mcp。','settings.roots':'授权目录','settings.rootsHint':'点击上面的按钮会在本机打开文件资源管理器选择窗口，也可以手动输入路径。添加后点击“保存访问策略”生效；指定目录模式下的空列表会禁止全部文件访问。',
     'settings.rootsAll':'授权所有目录','settings.rootsAllHint':'ChatGPT 可访问本机任意目录。凭据目录与 tunnel-client 仍然受保护。','settings.rootsSelected':'授权指定目录','settings.rootsSelectedHint':'只开放下面选择的目录。可以多次添加，每个目录可单独设为可写或只读。','settings.rootsAllWarning':'授权所有目录后，文件写入审批是唯一的写入闸门，建议保持开启。',
     'settings.rootsList':'已授权的目录','settings.rootsEmpty':'还没有选择目录。点击"从文件资源管理器选择文件夹"开始添加。','settings.pickFolder':'从文件资源管理器选择文件夹','settings.addRoot':'添加目录','settings.rootPathPlaceholder':'或手动输入绝对目录路径，例如 F:\\Project',
@@ -56,7 +59,7 @@ const messages = {
     'gate.title':'Connect Secure Tunnel','gate.intro':'Enter your Tunnel ID and Runtime API Key. RDC-X unlocks the Dashboard only after the connection reaches <b>Ready</b>.','gate.tunnelId':'Tunnel ID','gate.runtimeKey':'Runtime API Key','gate.keyPlaceholder':'Enter Runtime API Key',
     'gate.credentialTitle':'Tunnel ID is stored locally','gate.credentialBody':'The Runtime API Key is protected with Windows DPAPI for the current user. Your browser may also offer password autofill.','gate.submit':'Connect and enter Dashboard','gate.waiting':'Waiting for credentials','gate.help1':'First-time setup requires a Tunnel ID and Runtime API Key created in OpenAI Platform.','gate.help2':'RDC-X never prints the Runtime API Key to its logs.',
     'gate.running':'The tunnel is already running. Enter credentials for this Start-All session to unlock the Dashboard.','gate.live':'tunnel-client is running and waiting for OpenAI Control Plane readiness.','gate.savedKey':'Tunnel ID is already stored. Enter the Runtime API Key to unlock this Dashboard session.','gate.connecting':'Starting tunnel-client and waiting for OpenAI Secure MCP Tunnel to become Ready…','gate.connected':'Tunnel Ready. Opening Dashboard…','gate.badTunnelId':'Tunnel ID must be tunnel_ followed by 32 lowercase hexadecimal characters.','gate.keyRequired':'Runtime API Key is required for this startup.',
-    'nav.overview':'Overview','nav.approvals':'Approvals','nav.connection':'Connection','nav.sessions':'Terminal sessions','nav.audit':'Audit log','nav.policy':'Access policy','sidebar.localService':'Local service',
+    'nav.overview':'Overview','nav.approvals':'Approvals','nav.connection':'Connection','nav.sessions':'Terminal sessions','nav.diagnostics':'System diagnostics','nav.audit':'Audit log','nav.policy':'Access policy','sidebar.localService':'Local service',
     'status.tunnelReady':'Tunnel Ready','status.thisComputer':'This computer','status.ready':'Ready','status.live':'Live','status.offline':'Offline',
     'overview.pausedTitle':'Remote access is paused','overview.pausedBody':'Resume access before ChatGPT can call RDC-X tools.','overview.activeTitle':'Secure access is active','overview.activeBody':'OpenAI Secure MCP Tunnel is Ready and this computer can accept RDC-X tool calls from ChatGPT.',
     'overview.tunnelUi':'Tunnel UI','overview.approval':'Approval','overview.trusted':'Trusted','overview.welcome':'Welcome to RDC-X','overview.subtitle':'Local policy controls which files, terminal features and desktop capabilities ChatGPT can use.',
@@ -69,6 +72,7 @@ const messages = {
     'connection.pairApprove':'Code matches — allow connection','connection.trustConfirm':'This lets Secure MCP Tunnel perform file changes, terminal, process, desktop and Unity mutations directly until RDC-X restarts or per-action approval is restored.\n\nContinue?','connection.heroTrustConfirm':'Trust this Tunnel session? High-privilege operations can run directly until RDC-X restarts or approval is restored.','connection.reconnectConfirm':'This disconnects the current Secure MCP Tunnel and returns to sign-in so you can enter a new Tunnel ID and Runtime API Key.\n\nContinue?','connection.legacyConfirm':'Continue with this Legacy OAuth action?',
     'sessions.title':'Terminal sessions','sessions.subtitle':'Command-line sessions created and managed by RDC-X.','sessions.empty':'There are no RDC-X managed terminal sessions.','sessions.stop':'Stop process',
     'audit.title':'Audit log','audit.subtitle':'The local audit keeps the latest 200 events and does not store tokens, file bodies or stdin bodies.',
+    'diagnostics.title':'System diagnostics','diagnostics.subtitle':'Check RDC-X, Tunnel, local MCP and the OpenAI upstream path separately.','diagnostics.refresh':'Run again','diagnostics.waiting':'Waiting for diagnostics','diagnostics.checksTitle':'Full checks','diagnostics.requestsTitle':'Recent MCP requests','diagnostics.requestsHint':'Shows time, request, HTTP status and safely truncated errors. Credentials and request bodies are not stored.','diagnostics.time':'Time','diagnostics.listener':'Path','diagnostics.request':'Request','diagnostics.statusCode':'Status','diagnostics.error':'Error','diagnostics.none':'No real MCP requests observed yet.','diagnostics.healthy':'Healthy','diagnostics.degraded':'Degraded','diagnostics.ok':'OK','diagnostics.failed':'Failed','diagnostics.checking':'Running /health, initialize and tools/list…','diagnostics.loadFailed':'Could not load diagnostics','diagnostics.noError':'—','diagnostics.gateSummary':'Connection failed? Open system diagnostics','diagnostics.gateHint':'After local admin authentication, these checks work before the Tunnel becomes Ready.',
     'settings.title':'Access policy','settings.subtitle':'Define which local capabilities ChatGPT may use through RDC-X.','settings.deviceName':'Device name','settings.legacyOrigin':'Legacy OAuth HTTPS origin','settings.legacyOriginHint':'Only used by the legacy port 47831 OAuth MCP flow. Do not append /mcp.','settings.roots':'Authorized roots','settings.rootsHint':'The button above opens the native folder picker on this computer; you can also type a path. Click "Save access policy" to apply. In selected-directories mode an empty list denies all file access.',
     'settings.rootsAll':'Authorize all directories','settings.rootsAllHint':'ChatGPT can reach any directory on this computer. Credential directories and tunnel-client stay protected.','settings.rootsSelected':'Authorize selected directories','settings.rootsSelectedHint':'Only the directories listed below are exposed. Add as many as you need and mark each one writable or read-only.','settings.rootsAllWarning':'With all directories authorized, file write approval is the only write gate. Keep it enabled unless you fully trust this session.',
     'settings.rootsList':'Authorized directories','settings.rootsEmpty':'No directory selected yet. Use "Pick folder from File Explorer" to add one.','settings.pickFolder':'Pick folder from File Explorer','settings.addRoot':'Add','settings.rootPathPlaceholder':'Or type an absolute directory path, for example F:\\Project',
@@ -115,6 +119,7 @@ async function setLanguage(next) {
   localStorage.setItem('rdcx-lang', locale);
   applyI18n();
   if (loadedSettings) { applyRootAccess(); renderRootList(); }
+  if (diagnosticsSnapshot) renderDiagnostics(diagnosticsSnapshot);
   if (snapshot && !$('dashboardShell').hidden) renderDashboard(snapshot);
   else if (!$('tunnelGate').hidden && key) await bootstrap();
 }
@@ -213,6 +218,7 @@ function showGate(state) {
   else if (state?.live) setGateStatus('loading', t('gate.live'));
   else if (state?.hasApiKey) setGateStatus('', t('gate.savedKey'));
   else setGateStatus('', t('gate.waiting'));
+  if ($('gateDiagnostics').open && key) void refreshDiagnostics();
 }
 
 function showDashboard() {
@@ -223,13 +229,14 @@ function showDashboard() {
 }
 
 function showView(view) {
-  const valid = ['overview','requests','connections','sessions','audit','settings'];
+  const valid = ['overview','requests','connections','sessions','diagnostics','audit','settings'];
   if (!valid.includes(view)) view = 'overview';
   currentView = view;
   document.querySelectorAll('.view').forEach(element => element.classList.toggle('active', element.id === 'view-' + view));
   document.querySelectorAll('.nav-item[data-view]').forEach(element => element.classList.toggle('active', element.dataset.view === view));
-  const viewKey = {overview:'nav.overview',requests:'nav.approvals',connections:'nav.connection',sessions:'nav.sessions',audit:'nav.audit',settings:'nav.policy'}[view];
+  const viewKey = {overview:'nav.overview',requests:'nav.approvals',connections:'nav.connection',sessions:'nav.sessions',diagnostics:'nav.diagnostics',audit:'nav.audit',settings:'nav.policy'}[view];
   if ($('breadcrumb')) $('breadcrumb').textContent = t(viewKey);
+  if (view === 'diagnostics' && key) void refreshDiagnostics();
 }
 
 async function bootstrap() {
@@ -479,6 +486,87 @@ function populateSettings(config) {
   loadedSettings = true;
 }
 
+function diagnosticStatus(status) {
+  return status === 'ok' ? 'ok' : status === 'error' ? 'error' : 'unknown';
+}
+
+function diagnosticStatusText(status) {
+  return status === 'ok' ? t('diagnostics.ok') : status === 'error' ? t('diagnostics.failed') : '--';
+}
+
+function renderDiagnosticChecks(target, checks) {
+  target.replaceChildren(...checks.map(check => {
+    const status = diagnosticStatus(check.status);
+    const row = node('div', undefined, `diagnostic-check status-${status}`);
+    const marker = node('span', status === 'ok' ? '✓' : status === 'error' ? '×' : '?', 'diagnostic-marker');
+    const copy = node('div', undefined, 'diagnostic-copy');
+    copy.append(node('strong', check.name), node('small', check.detail));
+    row.append(marker, copy, node('span', diagnosticStatusText(status), 'diagnostic-result'));
+    return row;
+  }));
+}
+
+function renderDiagnostics(data) {
+  diagnosticsSnapshot = data;
+  const layers = $('diagnosticLayers');
+  layers.replaceChildren(...data.layers.map(layer => {
+    const status = diagnosticStatus(layer.status);
+    const card = node('article', undefined, `diagnostic-layer status-${status}`);
+    const head = node('div', undefined, 'diagnostic-layer-head');
+    head.append(node('span', status === 'ok' ? '✓' : '×', 'diagnostic-marker'), node('strong', layer.name));
+    card.append(head, node('b', diagnosticStatusText(status)), node('small', layer.detail));
+    return card;
+  }));
+
+  renderDiagnosticChecks($('diagnosticChecks'), data.checks);
+  renderDiagnosticChecks($('gateDiagnosticsChecks'), data.checks);
+
+  $('diagnosticsOverall').textContent = data.ok ? t('diagnostics.healthy') : t('diagnostics.degraded');
+  $('diagnosticsOverall').className = `pill diagnostic-overall status-${data.ok ? 'ok' : 'error'}`;
+  $('diagnosticsGeneratedAt').textContent = new Date(data.generatedAt).toLocaleString(locale === 'zh-CN' ? 'zh-CN' : 'en-US');
+
+  const requests = $('diagnosticRequests');
+  requests.replaceChildren();
+  if (!data.recentRequests.length) {
+    const row = document.createElement('tr');
+    const cell = node('td', t('diagnostics.none'), 'diagnostic-empty');
+    cell.colSpan = 5;
+    row.append(cell);
+    requests.append(row);
+  } else {
+    for (const item of data.recentRequests) {
+      const row = document.createElement('tr');
+      const status = node('td', String(item.statusCode), item.error ? 'request-status failed' : 'request-status');
+      row.append(
+        node('td', new Date(item.time).toLocaleTimeString(locale === 'zh-CN' ? 'zh-CN' : 'en-US')),
+        node('td', item.listener === 'tunnel' ? 'Secure Tunnel' : 'OAuth'),
+        node('td', item.request, 'request-name'),
+        status,
+        node('td', item.error || t('diagnostics.noError'), item.error ? 'request-error' : 'request-ok')
+      );
+      requests.append(row);
+    }
+  }
+}
+
+async function refreshDiagnostics(force = false) {
+  if (!key || diagnosticsBusy) return;
+  diagnosticsBusy = true;
+  for (const button of [$('refreshDiagnostics'), $('gateDiagnosticsRefresh')]) button.disabled = true;
+  $('diagnosticsGeneratedAt').textContent = t('diagnostics.checking');
+  try {
+    const data = await api('/diagnostics' + (force ? '?refresh=1' : ''));
+    renderDiagnostics(data);
+  } catch (error) {
+    $('diagnosticsGeneratedAt').textContent = t('diagnostics.loadFailed');
+    empty($('diagnosticChecks'), translateBackendError(error.message));
+    empty($('gateDiagnosticsChecks'), translateBackendError(error.message));
+  } finally {
+    diagnosticsBusy = false;
+    for (const button of [$('refreshDiagnostics'), $('gateDiagnosticsRefresh')]) button.disabled = false;
+  }
+}
+
 function renderDashboard(data) {
   const config = data.config;
   const tunnel = data.secureTunnel;
@@ -595,6 +683,12 @@ $('toggleGateKey').addEventListener('click', () => {
 
 document.querySelectorAll('[data-view]').forEach(button => {
   button.addEventListener('click', () => showView(button.dataset.view));
+});
+
+$('refreshDiagnostics').addEventListener('click', () => { void refreshDiagnostics(true); });
+$('gateDiagnosticsRefresh').addEventListener('click', () => { void refreshDiagnostics(true); });
+$('gateDiagnostics').addEventListener('toggle', () => {
+  if ($('gateDiagnostics').open) void refreshDiagnostics();
 });
 
 function openTunnelUi() {

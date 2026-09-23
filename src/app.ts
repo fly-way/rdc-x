@@ -2,7 +2,7 @@ import express, { type Request, type Response, type NextFunction } from 'express
 import path from 'node:path';
 import type { Server } from 'node:http';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { State, sameSecret } from './state.js';
+import { State, random, sameSecret } from './state.js';
 import { FileService } from './files.js';
 import { Approvals } from './approvals.js';
 import { ProcessService } from './processes.js';
@@ -17,6 +17,8 @@ import { DialogService } from './dialog.js';
 import { createMcp } from './tools.js';
 import { TunnelRuntime } from './tunnel-runtime.js';
 import { RDCX_VERSION } from './version.js';
+import { buildDiagnosticsReport, McpRequestHistory } from './diagnostics.js';
+import { registerDiagnosticsRoute } from './diagnostics-route.js';
 
 const SECURE_TUNNEL_OWNER = 'secure-mcp-tunnel';
 const FULL_SCOPES = ['rdc.read', 'rdc.write', 'rdc.exec'];
@@ -33,6 +35,11 @@ export function createApp(base: string) {
   const mcp = express(); const admin = express(); const tunnelMcp = express();
   let servers: Server[] = []; let active = 0; let dashboardUnlocked = false;
   const mcpPort = state.config.mcpPort; const adminPort = state.config.adminPort; const tunnelPort = state.config.tunnelPort;
+  const diagnosticsProbeToken = random();
+  const mcpRequests = new McpRequestHistory();
+  let diagnosticsCache: Awaited<ReturnType<typeof buildDiagnosticsReport>> | undefined;
+  let diagnosticsCacheUntil = 0;
+  let diagnosticsInFlight: Promise<Awaited<ReturnType<typeof buildDiagnosticsReport>>> | undefined;
 
   async function secureTunnelState() {
     const runtime = await tunnelRuntime.status();
@@ -44,6 +51,69 @@ export function createApp(base: string) {
       approvalMode: approvals.mode(SECURE_TUNNEL_OWNER)
     };
   }
+
+  async function getDiagnostics(force = false) {
+    const now = Date.now();
+    if (force) diagnosticsCacheUntil = 0;
+    if (!diagnosticsCache || now >= diagnosticsCacheUntil) {
+      diagnosticsInFlight ??= (async () => {
+        const runtime = await secureTunnelState();
+        return buildDiagnosticsReport({
+          paused: state.paused,
+          secureTunnelEnabled: state.config.secureTunnelEnabled,
+          tunnelLive: runtime.live,
+          tunnelReady: runtime.ready,
+          tunnelProcessRunning: runtime.processRunning,
+          tunnelLastError: runtime.lastError,
+          mcpPort,
+          tunnelPort,
+          adminPort,
+          authorizationCount: auth.listAuthorizations().length
+        }, { probeToken: diagnosticsProbeToken });
+      })();
+      try {
+        diagnosticsCache = await diagnosticsInFlight;
+        diagnosticsCacheUntil = Date.now() + 5000;
+      } finally {
+        diagnosticsInFlight = undefined;
+      }
+    }
+    return { ...diagnosticsCache, recentRequests: mcpRequests.list() };
+  }
+
+  const isDiagnosticsProbe = (req: Request) => {
+    const token = req.headers['x-rdc-diagnostics-probe'];
+    return typeof token === 'string' && sameSecret(token, diagnosticsProbeToken);
+  };
+
+  const requestName = (req: Request) => {
+    if (req.method === 'GET') return 'SSE probe';
+    const body = req.body;
+    if (Array.isArray(body)) {
+      const methods = body.flatMap(item => typeof item?.method === 'string' ? [item.method] : []);
+      if (methods.length) return methods.join(', ');
+    }
+    if (body && typeof body === 'object' && typeof body.method === 'string') return body.method;
+    return `${req.method} ${req.path}`;
+  };
+
+  const monitorMcp = (listener: 'oauth' | 'tunnel') => (req: Request, res: Response, next: NextFunction) => {
+    if (req.path !== '/mcp' || isDiagnosticsProbe(req)) return next();
+    const started = Date.now();
+    res.once('finish', () => {
+      const expectedSseRejection = req.method === 'GET' && res.statusCode === 405;
+      const reportedError = typeof res.locals.diagnosticsError === 'string' ? res.locals.diagnosticsError : '';
+      mcpRequests.add({
+        time: new Date(started).toISOString(),
+        listener,
+        request: requestName(req),
+        statusCode: res.statusCode,
+        error: expectedSseRejection || res.statusCode < 400 ? null : reportedError || `HTTP ${res.statusCode}`,
+        durationMs: Date.now() - started
+      });
+    });
+    next();
+  };
 
   for (const app of [mcp, admin, tunnelMcp]) {
     app.disable('x-powered-by');
@@ -75,6 +145,7 @@ export function createApp(base: string) {
     if (req.method === 'OPTIONS') return res.sendStatus(204);
     next();
   });
+  mcp.use(monitorMcp('oauth'));
 
   // Dedicated Secure MCP Tunnel listener. This port is loopback-only and must never be exposed by Cloudflare/reverse proxies.
   tunnelMcp.use((req, res, next) => {
@@ -84,22 +155,39 @@ export function createApp(base: string) {
       return res.status(403).json({ error: 'Secure tunnel listener rejects browser origins.' });
     next();
   });
+  tunnelMcp.use(monitorMcp('tunnel'));
 
-  let windowStart = Date.now(); let requests = 0;
-  const rateLimit = (_req: Request, res: Response, next: NextFunction) => {
-    if (Date.now() - windowStart > 60000) { windowStart = Date.now(); requests = 0; }
-    if (++requests > 900) return res.status(429).set('Retry-After', '60').json({ error: 'Request rate limit exceeded.' });
-    next();
+  const createRateLimit = () => {
+    let windowStart = Date.now(); let requests = 0;
+    return (req: Request, res: Response, next: NextFunction) => {
+      // GET /mcp is the optional Streamable HTTP SSE probe. It performs no
+      // tool work and must always reach the protocol handler so it cannot turn
+      // into a misleading 429 during tunnel readiness checks.
+      if (req.method !== 'POST' || req.path !== '/mcp' || isDiagnosticsProbe(req)) return next();
+      if (Date.now() - windowStart > 60000) { windowStart = Date.now(); requests = 0; }
+      if (++requests > 900) {
+        res.locals.diagnosticsError = 'RDC-X local MCP request rate limit exceeded.';
+        return res.status(429).set('Retry-After', '60').json({ error: 'Request rate limit exceeded.' });
+      }
+      next();
+    };
   };
-  mcp.use(rateLimit); tunnelMcp.use(rateLimit);
+  mcp.use(createRateLimit());
+  tunnelMcp.use(createRateLimit());
 
   mcp.use(express.json({ limit: '6mb' }), express.urlencoded({ extended: false, limit: '32kb' }));
   tunnelMcp.use(express.json({ limit: '6mb' }));
 
   async function handleMcp(req: Request, res: Response, owner: string, scopes: string[], authMode: 'oauth' | 'tunnel') {
-    if (state.paused) return res.status(503).json({ error: 'Remote access is paused.' });
+    if (state.paused) {
+      res.locals.diagnosticsError = 'Remote access is paused.';
+      return res.status(503).json({ error: 'Remote access is paused.' });
+    }
     if (req.method !== 'POST') return res.status(405).set('Allow', 'POST').end();
-    if (active >= 12) return res.status(429).json({ error: 'Too many concurrent MCP requests.' });
+    if (active >= 12) {
+      res.locals.diagnosticsError = 'RDC-X has too many concurrent MCP requests.';
+      return res.status(429).json({ error: 'Too many concurrent MCP requests.' });
+    }
     active++;
     const server = createMcp(services, owner, scopes, authMode);
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
@@ -107,6 +195,7 @@ export function createApp(base: string) {
       await server.connect(transport);
       await transport.handleRequest(req, res, req.body);
     } catch (e: any) {
+      res.locals.diagnosticsError = String(e.message).slice(0, 300);
       state.audit(authMode === 'tunnel' ? 'secure_tunnel_mcp_transport' : 'mcp_transport', 'failed', { error: String(e.message).slice(0, 300) }, owner);
       if (!res.headersSent) res.status(500).json({ error: 'MCP request failed.' });
     } finally {
@@ -125,6 +214,7 @@ export function createApp(base: string) {
       if (!header.startsWith('Bearer ')) throw new Error('Missing bearer token.');
       grant = auth.verify(header.slice(7));
     } catch {
+      res.locals.diagnosticsError = 'OAuth authorization failed.';
       return res.status(401)
         .set('WWW-Authenticate', `Bearer resource_metadata="${auth.origin}/.well-known/oauth-protected-resource/mcp", scope="rdc.read rdc.write rdc.exec"`)
         .json({ error: 'unauthorized' });
@@ -140,6 +230,7 @@ export function createApp(base: string) {
   }));
   tunnelMcp.all('/mcp', async (req, res) => {
     if (!state.config.secureTunnelEnabled) {
+      res.locals.diagnosticsError = 'Secure MCP Tunnel listener is disabled.';
       return res.status(503).json({ error: 'Secure MCP Tunnel listener is disabled in the local dashboard.' });
     }
     return handleMcp(req, res, SECURE_TUNNEL_OWNER, FULL_SCOPES, 'tunnel');
@@ -159,6 +250,7 @@ export function createApp(base: string) {
       return res.status(401).json({ error: 'Local admin key required. Run Start-All.cmd on this computer.' });
     next();
   });
+  registerDiagnosticsRoute(admin, { getDiagnostics });
   admin.get('/api/bootstrap', async (_req, res) => {
     const runtime = await secureTunnelState();
     res.json({
@@ -327,7 +419,10 @@ export function createApp(base: string) {
   for (const app of [mcp, admin, tunnelMcp]) {
     app.use((_req, res) => res.status(404).json({ error: 'Not found.' }));
     app.use((error: any, _req: Request, res: Response, _next: NextFunction) => {
-      if (!res.headersSent) res.status(error.status ?? 400).json({ error: String(error.message).slice(0, 500) });
+      if (!res.headersSent) {
+        res.locals.diagnosticsError = String(error.message).slice(0, 500);
+        res.status(error.status ?? 400).json({ error: String(error.message).slice(0, 500) });
+      }
     });
   }
 
