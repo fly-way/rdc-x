@@ -54,6 +54,7 @@ await test('filesystem and consent boundaries', async t => {
     f.state.config.roots[0]!.write = false; await assert.rejects(() => files.write('denied.txt', 'x', 'create')); f.state.config.roots[0]!.write = true;
   });
   await t.test('approval does not run until local decision and runs only once', async () => {
+    approvals.setMode('owner', 'default');
     let count = 0; const result: any = await approvals.run('owner', 'test', { value: 1 }, async () => ({ count: ++count }));
     assert.equal(count, 0); assert.equal(result.status, 'approval_required');
     assert.throws(() => approvals.result(result.requestId, 'other'));
@@ -62,6 +63,7 @@ await test('filesystem and consent boundaries', async t => {
     assert.equal(approvals.result(result.requestId, 'owner').status, 'completed');
   });
   await t.test('rejected and expired requests never execute', async () => {
+    approvals.setMode('owner', 'default');
     let count = 0;
     for (const expired of [false, true]) {
       const a: any = await approvals.run('owner', 'test', {}, async () => ++count);
@@ -120,8 +122,11 @@ await test('filesystem and consent boundaries', async t => {
     const previous = f.state.config.maxFileBytes; f.state.config.maxFileBytes = 2;
     await assert.rejects(() => files.read('hello.txt')); f.state.config.maxFileBytes = previous;
   });
-  await t.test('terminal default is disabled', async () => {
-    const terminal = new ProcessService(f.state, files.guard); await assert.rejects(() => terminal.start('owner', 'echo test', f.workspace, 5));
+  await t.test('terminal is enabled by default', async () => {
+    const terminal = new ProcessService(f.state, files.guard);
+    const started = await terminal.start('owner', process.platform === 'win32' ? 'Write-Output ready' : 'echo ready', f.workspace, 5);
+    assert.ok(started.sessionId);
+    await terminal.stop(started.sessionId, 'owner');
   });
   await t.test('terminal command policy blocks and allowlists before execution', async () => {
     f.state.config.terminalEnabled = true;

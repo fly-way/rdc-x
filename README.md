@@ -170,9 +170,12 @@ If the Secure MCP Tunnel loses readiness, the browser returns to the Tunnel sign
 
 RDC-X uses explicit local policy controls.
 
+Every capability is enabled by default: file write approval, terminal commands, system process control, desktop control and public network fetch. Turn off anything you do not need.
+
 The Dashboard can configure:
 
-- authorized read-only or read/write roots;
+- directory authorization mode: **all directories** or **selected directories**;
+- for selected directories, individual read-only (`ro`) or read/write (`rw`) roots;
 - whether file modifications require local approval;
 - terminal execution;
 - system process control;
@@ -187,15 +190,19 @@ rw | F:\UnityProject
 ro | F:\Reference
 ```
 
-An empty root list denies file access.
+In selected-directories mode, an empty root list denies file access. Choose **Pick folder from File Explorer** to open the native Windows folder picker on this computer and add real directories one by one; each added root can be switched between read-only and read/write.
+
+In all-directories mode, RDC-X accepts any absolute path on this computer. Protected credential paths (for example `.ssh`, `.env`, `.rdc`) and the active `tools\tunnel-client.exe` stay blocked, and keep **file write approval** enabled unless you fully trust the session.
 
 If the RDC-X repository itself is inside an explicitly authorized root, its source code can be read and edited through RDC-X. Private runtime state under `.rdc`, common credential files/directories, and the active `tools\\tunnel-client.exe` binary remain protected.
 
 ### Approval modes
 
-The Secure Tunnel connection normally uses per-action approval for protected mutations.
+Sessions are **trusted by default**: file mutations, terminal commands, process control, desktop control and Unity mutations run without a per-action prompt.
 
-The local owner can temporarily switch the current Tunnel session to trusted mode. Trusted mode is kept in memory only and is reset when RDC-X restarts. Remote access-policy changes made with `set_config_value` still require explicit local approval even in trusted mode.
+Use **Restore per-action approval** on the Connection page to return the current session to per-action approval. That choice is kept in memory only: it returns to the trusted default when RDC-X restarts or after a local policy change.
+
+Even in trusted mode, remote access-policy changes made with `set_config_value` always require explicit local approval.
 
 ### Terminal security
 
@@ -245,6 +252,7 @@ Useful development/diagnostic commands:
 npm.cmd run build
 npm.cmd test
 npm.cmd run doctor
+npm.cmd run drill
 node scripts\verify.mjs
 ```
 

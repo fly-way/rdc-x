@@ -13,6 +13,7 @@ import { SystemService } from './system.js';
 import { DesktopService } from './desktop.js';
 import { UnityService } from './unity.js';
 import { NetworkService } from './network.js';
+import { DialogService } from './dialog.js';
 import { createMcp } from './tools.js';
 import { TunnelRuntime } from './tunnel-runtime.js';
 import { RDCX_VERSION } from './version.js';
@@ -27,6 +28,7 @@ export function createApp(base: string) {
   const documents = new DocumentService(state, files.guard); const system = new SystemService();
   const desktop = new DesktopService(state); const unity = new UnityService(state, files.guard); const network = new NetworkService();
   const services = { state, files, approvals, processes, searches, documents, system, desktop, unity, network };
+  const dialog = new DialogService();
   const tunnelRuntime = new TunnelRuntime(state, base);
   const mcp = express(); const admin = express(); const tunnelMcp = express();
   let servers: Server[] = []; let active = 0; let dashboardUnlocked = false;
@@ -248,6 +250,20 @@ export function createApp(base: string) {
     dashboardUnlocked = false;
     res.json(await tunnelRuntime.forgetKey());
   });
+  admin.post('/api/folder-pick', (req, res) => {
+    const title = typeof req.body?.title === 'string' ? req.body.title : '';
+    const startPath = typeof req.body?.startPath === 'string' ? req.body.startPath : '';
+    res.json(dialog.start(title, startPath));
+  });
+  admin.get('/api/folder-pick/:id', (req, res) => {
+    const pick = dialog.get(String(req.params.id));
+    if (!pick) return res.status(404).json({ error: 'Folder picker request was not found.' });
+    res.json(pick);
+  });
+  admin.post('/api/folder-pick/:id/cancel', (req, res) => {
+    dialog.cancel(String(req.params.id));
+    res.json({ ok: true });
+  });
   admin.post('/api/config', async (req, res) => {
     const next = {
       ...state.config,
@@ -317,6 +333,7 @@ export function createApp(base: string) {
 
   async function stop() {
     state.paused = true;
+    dialog.dispose();
     approvals.cancelAll();
     searches.stopAll();
     await processes.stopAll();
@@ -332,6 +349,7 @@ export function createApp(base: string) {
   return {
     ...services,
     auth,
+    dialog,
     mcp,
     admin,
     tunnelMcp,

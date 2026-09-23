@@ -53,8 +53,8 @@ export class SystemService {
     }
 
     const warnings: string[] = [];
-    if (!roots.length) warnings.push('No filesystem roots are authorized.');
-    if (roots.some(root => !root.exists || !root.directory)) warnings.push('One or more authorized roots are unavailable.');
+    if (state.config.rootAccess !== 'all' && !roots.length) warnings.push('No filesystem roots are authorized.');
+    if (state.config.rootAccess !== 'all' && roots.some(root => !root.exists || !root.directory)) warnings.push('One or more authorized roots are unavailable.');
     if (!tunnelClient.available) warnings.push('tunnel-client was not found.');
     if (process.platform === 'win32' && !(commandChecks['powershell.exe'] as any)?.available && !(commandChecks['pwsh.exe'] as any)?.available)
       warnings.push('No PowerShell executable was found.');
@@ -63,6 +63,7 @@ export class SystemService {
       ok: warnings.length === 0,
       platform: process.platform,
       node: process.version,
+      rootAccess: state.config.rootAccess,
       roots,
       commands: commandChecks,
       tunnelClient,

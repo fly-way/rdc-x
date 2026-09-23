@@ -17,14 +17,14 @@ await test('expanded capabilities', async t => {
     const f=fixture();
     try {
       const approvals=new Approvals(f.state); let ran=0;
-      const pending:any=await approvals.run('grant-a','write_file',{path:'x'},async()=>++ran,true);
-      assert.equal(pending.status,'approval_required'); assert.equal(ran,0);
-      approvals.setMode('grant-b','trusted');
-      assert.equal(await approvals.run('grant-b','write_file',{path:'y'},async()=>++ran,true),1);
-      const strict:any=await approvals.run('grant-b','set_config_value',{key:'roots'},async()=>++ran,true,false);
+      assert.equal(await approvals.run('grant-a','write_file',{path:'x'},async()=>++ran,true),1);
+      approvals.setMode('grant-b','default');
+      const pending:any=await approvals.run('grant-b','write_file',{path:'y'},async()=>++ran,true);
+      assert.equal(pending.status,'approval_required'); assert.equal(ran,1);
+      const strict:any=await approvals.run('grant-a','set_config_value',{key:'roots'},async()=>++ran,true,false);
       assert.equal(strict.status,'approval_required'); assert.equal(ran,1);
-      assert.equal(approvals.mode('grant-a'),'default'); assert.equal(approvals.mode('grant-b'),'trusted');
-      approvals.resetSessionTrust(); assert.equal(approvals.mode('grant-b'),'default');
+      assert.equal(approvals.mode('grant-a'),'trusted'); assert.equal(approvals.mode('grant-b'),'default');
+      approvals.resetSessionTrust(); assert.equal(approvals.mode('grant-b'),'trusted');
     } finally { f.clean(); }
   });
 

@@ -1,4 +1,5 @@
 import fs from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 import type { State } from './state.js';
 
@@ -23,17 +24,20 @@ export class PathGuard {
     }
 
     const roots = this.state.config.roots;
-    if (!roots.length) throw new Error('No directories have been authorized.');
+    const allDirectories = this.state.config.rootAccess === 'all';
+    if (!allDirectories && !roots.length) throw new Error('No directories have been authorized.');
 
-    const candidate = path.resolve(path.isAbsolute(input) ? input : path.join(roots[0]!.path, input));
+    const candidate = path.resolve(path.isAbsolute(input) ? input : path.join(roots[0]?.path ?? os.homedir(), input));
     if (candidate.split(path.sep).some(part => secretNames.test(part))) throw new Error('Protected credentials path.');
 
     const tunnelBinary = path.resolve(this.state.base, 'tools', process.platform === 'win32' ? 'tunnel-client.exe' : 'tunnel-client');
     if (write && path.resolve(candidate) === tunnelBinary)
       throw new Error('The active tunnel-client executable is protected from remote mutation.');
 
-    const root = roots.find(r => within(path.resolve(r.path), candidate) && (!write || r.write));
-    if (!root) throw new Error(write ? 'Path is outside writable roots.' : 'Path is outside allowed roots.');
+    const root = allDirectories
+      ? null
+      : roots.find(r => within(path.resolve(r.path), candidate) && (!write || r.write)) ?? null;
+    if (!allDirectories && !root) throw new Error(write ? 'Path is outside writable roots.' : 'Path is outside allowed roots.');
 
     let current = path.parse(candidate).root;
     let firstMissing = false;
@@ -49,16 +53,18 @@ export class PathGuard {
       }
     }
 
-    const canonicalRoot = await fs.realpath(root.path);
-    let ancestor = candidate;
-    while (true) {
-      try {
-        const canonical = await fs.realpath(ancestor);
-        if (!within(canonicalRoot, canonical)) throw new Error('Canonical path escapes the allowed root.');
-        break;
-      } catch (e: any) {
-        if (missing && e.code === 'ENOENT' && ancestor !== path.dirname(ancestor)) ancestor = path.dirname(ancestor);
-        else throw e;
+    if (root) {
+      const canonicalRoot = await fs.realpath(root.path);
+      let ancestor = candidate;
+      while (true) {
+        try {
+          const canonical = await fs.realpath(ancestor);
+          if (!within(canonicalRoot, canonical)) throw new Error('Canonical path escapes the allowed root.');
+          break;
+        } catch (e: any) {
+          if (missing && e.code === 'ENOENT' && ancestor !== path.dirname(ancestor)) ancestor = path.dirname(ancestor);
+          else throw e;
+        }
       }
     }
     return candidate;

@@ -9,6 +9,8 @@ let snapshot;
 let busy = false;
 let loadedSettings = false;
 let lastLists = '';
+let selectedRoots = [];
+let picking = false;
 let currentView = 'overview';
 let locale = localStorage.getItem('rdcx-lang') || (navigator.language?.toLowerCase().startsWith('zh') ? 'zh-CN' : 'en');
 
@@ -35,9 +37,13 @@ const messages = {
     'connection.pairApprove':'验证码一致，允许连接','connection.trustConfirm':'开启后，Secure MCP Tunnel 的文件修改、终端、系统进程、桌面和 Unity 修改可直接执行，直到服务重启或恢复逐次审批。\n\n确定继续？','connection.heroTrustConfirm':'切换为本次 Tunnel 会话免审批？高权限操作将可直接执行直到服务重启或恢复逐次审批。','connection.reconnectConfirm':'这会断开当前 Secure MCP Tunnel，并返回登录页以重新输入 Tunnel ID 和 Runtime API Key。\n\n确定继续？','connection.legacyConfirm':'确定执行此 Legacy OAuth 操作？',
     'sessions.title':'终端会话','sessions.subtitle':'RDC-X 创建并管理的命令行会话。','sessions.empty':'当前没有 RDC-X 管理的终端会话。','sessions.stop':'停止进程',
     'audit.title':'审计日志','audit.subtitle':'本机记录最近 200 条操作事件，不保存 Token、文件正文或 stdin 正文。',
-    'settings.title':'访问策略','settings.subtitle':'定义 ChatGPT 通过 RDC-X 可以使用的本机能力。','settings.deviceName':'设备名称','settings.legacyOrigin':'Legacy OAuth HTTPS 源地址','settings.legacyOriginHint':'仅兼容旧的 47831 OAuth MCP 流程；不要加 /mcp。','settings.roots':'授权目录','settings.rootsHint':'每行使用 <code>rw | path</code> 或 <code>ro | path</code>。空列表会禁止全部文件访问。',
-    'settings.fileWriteApproval':'文件写入审批','settings.fileWriteApprovalHint':'默认要求文件修改逐次审批','settings.terminalCommands':'终端命令','settings.terminalCommandsHint':'允许执行终端命令','settings.processControl':'系统进程控制','settings.processControlHint':'允许终止任意非关键系统进程','settings.desktopControl':'桌面控制','settings.desktopControlHint':'允许截图、窗口、鼠标与键盘控制','settings.networkFetch':'网络文本读取','settings.networkFetchHint':'允许读取公网 HTTP/HTTPS 文本',
-    'settings.terminalWarning':'终端不是操作系统沙箱。批准的命令拥有当前 Windows 用户权限；需要强隔离时请使用低权限专用账号或虚拟机。','settings.oauthHosts':'允许的 OAuth 回调域名','settings.oauthHostsHint':'逗号分隔的精确域名，不支持通配符。','settings.save':'保存访问策略','settings.localService':'本机服务','settings.shutdownHint':'停止 RDC-X 会同时停止由它管理的 Secure MCP Tunnel。','settings.shutdown':'停止 RDC-X 与 Tunnel','settings.saved':'访问策略已保存。','settings.badRoot':'目录格式应为：rw | F:\\Project 或 ro | F:\\Reference','settings.terminalConfirm':'终端不是操作系统沙箱，命令拥有当前 Windows 用户权限。\n\n确定启用？','settings.highPrivilegeConfirm':'你正在开启高权限系统/桌面控制。若 Tunnel 同时设为免审批，ChatGPT 可以直接执行这些操作。\n\n确定继续？','settings.shutdownConfirm':'停止 RDC-X 与由它管理的 Secure MCP Tunnel？\n\n之后运行 Start-All.cmd 可重新启动。','settings.stopped':'RDC-X 正在停止。','settings.stoppedGate':'RDC-X 已停止。再次使用请运行 Start-All.cmd。',
+    'settings.title':'访问策略','settings.subtitle':'定义 ChatGPT 通过 RDC-X 可以使用的本机能力。','settings.deviceName':'设备名称','settings.legacyOrigin':'Legacy OAuth HTTPS 源地址','settings.legacyOriginHint':'仅兼容旧的 47831 OAuth MCP 流程；不要加 /mcp。','settings.roots':'授权目录','settings.rootsHint':'点击上面的按钮会在本机打开文件资源管理器选择窗口，也可以手动输入路径。添加后点击“保存访问策略”生效；指定目录模式下的空列表会禁止全部文件访问。',
+    'settings.rootsAll':'授权所有目录','settings.rootsAllHint':'ChatGPT 可访问本机任意目录。凭据目录与 tunnel-client 仍然受保护。','settings.rootsSelected':'授权指定目录','settings.rootsSelectedHint':'只开放下面选择的目录。可以多次添加，每个目录可单独设为可写或只读。','settings.rootsAllWarning':'授权所有目录后，文件写入审批是唯一的写入闸门，建议保持开启。',
+    'settings.rootsList':'已授权的目录','settings.rootsEmpty':'还没有选择目录。点击"从文件资源管理器选择文件夹"开始添加。','settings.pickFolder':'从文件资源管理器选择文件夹','settings.addRoot':'添加目录','settings.rootPathPlaceholder':'或手动输入绝对目录路径，例如 F:\\Project',
+    'settings.pickWaiting':'已在本机打开文件资源管理器选择窗口，请在该窗口中选择文件夹…','settings.pickCancelled':'已取消选择。','settings.pickFailed':'打开文件夹选择窗口失败。','settings.pickTimeout':'等待文件夹选择超时，请重试。','settings.pickAdded':'已添加所选文件夹。','settings.pickTitle':'选择要授权给 RDC-X 的文件夹','settings.pickBusy':'已有一个选择窗口正在等待确认，请先完成或关闭它。',
+    'settings.rootInvalid':'请输入绝对目录路径，例如 F:\\Project','settings.rootWrite':'可读写','settings.rootRead':'只读','settings.removeRoot':'移除','settings.rootDuplicate':'该目录已在列表中。','settings.rootLimit':'最多只能授权 20 个目录。',
+    'settings.fileWriteApproval':'文件写入审批','settings.fileWriteApprovalHint':'要求文件修改逐次审批；免审批会话下会自动跳过','settings.terminalCommands':'终端命令','settings.terminalCommandsHint':'允许执行终端命令','settings.processControl':'系统进程控制','settings.processControlHint':'允许终止任意非关键系统进程','settings.desktopControl':'桌面控制','settings.desktopControlHint':'允许截图、窗口、鼠标与键盘控制','settings.networkFetch':'网络文本读取','settings.networkFetchHint':'允许读取公网 HTTP/HTTPS 文本',
+    'settings.terminalWarning':'终端不是操作系统沙箱。批准的命令拥有当前 Windows 用户权限；需要强隔离时请使用低权限专用账号或虚拟机。','settings.oauthHosts':'允许的 OAuth 回调域名','settings.oauthHostsHint':'逗号分隔的精确域名，不支持通配符。','settings.save':'保存访问策略','settings.localService':'本机服务','settings.shutdownHint':'停止 RDC-X 会同时停止由它管理的 Secure MCP Tunnel。','settings.shutdown':'停止 RDC-X 与 Tunnel','settings.saved':'访问策略已保存。','settings.rootInvalid':'请输入绝对目录路径，例如 F:\\Project','settings.terminalConfirm':'终端不是操作系统沙箱，命令拥有当前 Windows 用户权限。\n\n确定启用？','settings.highPrivilegeConfirm':'你正在开启高权限系统/桌面控制。若 Tunnel 同时设为免审批，ChatGPT 可以直接执行这些操作。\n\n确定继续？','settings.shutdownConfirm':'停止 RDC-X 与由它管理的 Secure MCP Tunnel？\n\n之后运行 Start-All.cmd 可重新启动。','settings.stopped':'RDC-X 正在停止。','settings.stoppedGate':'RDC-X 已停止。再次使用请运行 Start-All.cmd。',
     'error.invalidResponse':'本机 RDC-X 服务返回了无效响应。','error.staleBackend':'当前运行的 RDC-X 后台版本比此页面旧。请再次运行 Start-All.cmd，使后台与 Dashboard 使用同一版本。','error.requestFailed':'请求失败','error.adminKey':'需要本机管理密钥。','error.bootstrapKey':'Runtime API Key 是进入 Dashboard 的必需项。','error.tunnelId':'Tunnel ID 必须是 tunnel_ 加 32 位小写十六进制字符。','error.tunnelTimeout':'Secure MCP Tunnel 未能在 20 秒内就绪。请检查 Tunnel ID、Runtime API Key、网络连接和 tunnel-client 安装。','error.otherClient':'另一个 tunnel-client 正在使用 127.0.0.1:47834。请先关闭旧 tunnel-client，再重试。',
     'status.pending':'等待中','status.approved':'已批准','status.rejected':'已拒绝','status.completed':'已完成','status.failed':'失败','status.started':'已启动','status.stopped':'已停止','status.updated':'已更新','status.resumed':'已恢复','status.paused':'已暂停','status.forgotten':'已删除','status.exited':'已退出'
   },
@@ -63,9 +69,13 @@ const messages = {
     'connection.pairApprove':'Code matches — allow connection','connection.trustConfirm':'This lets Secure MCP Tunnel perform file changes, terminal, process, desktop and Unity mutations directly until RDC-X restarts or per-action approval is restored.\n\nContinue?','connection.heroTrustConfirm':'Trust this Tunnel session? High-privilege operations can run directly until RDC-X restarts or approval is restored.','connection.reconnectConfirm':'This disconnects the current Secure MCP Tunnel and returns to sign-in so you can enter a new Tunnel ID and Runtime API Key.\n\nContinue?','connection.legacyConfirm':'Continue with this Legacy OAuth action?',
     'sessions.title':'Terminal sessions','sessions.subtitle':'Command-line sessions created and managed by RDC-X.','sessions.empty':'There are no RDC-X managed terminal sessions.','sessions.stop':'Stop process',
     'audit.title':'Audit log','audit.subtitle':'The local audit keeps the latest 200 events and does not store tokens, file bodies or stdin bodies.',
-    'settings.title':'Access policy','settings.subtitle':'Define which local capabilities ChatGPT may use through RDC-X.','settings.deviceName':'Device name','settings.legacyOrigin':'Legacy OAuth HTTPS origin','settings.legacyOriginHint':'Only used by the legacy port 47831 OAuth MCP flow. Do not append /mcp.','settings.roots':'Authorized roots','settings.rootsHint':'Use <code>rw | path</code> or <code>ro | path</code> on each line. An empty list denies all file access.',
-    'settings.fileWriteApproval':'File write approval','settings.fileWriteApprovalHint':'Require per-action approval for file mutations by default','settings.terminalCommands':'Terminal commands','settings.terminalCommandsHint':'Allow terminal command execution','settings.processControl':'System process control','settings.processControlHint':'Allow termination of arbitrary non-critical system processes','settings.desktopControl':'Desktop control','settings.desktopControlHint':'Allow screenshots, windows, mouse and keyboard control','settings.networkFetch':'Network text fetch','settings.networkFetchHint':'Allow public HTTP/HTTPS text retrieval',
-    'settings.terminalWarning':'Terminal execution is not an operating-system sandbox. Approved commands run with the current Windows user privileges. Use a dedicated low-privilege account or VM for stronger isolation.','settings.oauthHosts':'Allowed OAuth redirect hosts','settings.oauthHostsHint':'Exact hostnames separated by commas. Wildcards are not allowed.','settings.save':'Save access policy','settings.localService':'Local service','settings.shutdownHint':'Stopping RDC-X also stops the Secure MCP Tunnel managed by it.','settings.shutdown':'Stop RDC-X and Tunnel','settings.saved':'Access policy saved.','settings.badRoot':'Root format must be: rw | F:\\Project or ro | F:\\Reference','settings.terminalConfirm':'Terminal is not an operating-system sandbox and commands run with the current Windows user privileges.\n\nEnable it?','settings.highPrivilegeConfirm':'You are enabling high-privilege process/desktop control. If the Tunnel is also trusted, ChatGPT may run these operations directly.\n\nContinue?','settings.shutdownConfirm':'Stop RDC-X and its managed Secure MCP Tunnel?\n\nRun Start-All.cmd to start it again.','settings.stopped':'RDC-X is stopping.','settings.stoppedGate':'RDC-X has stopped. Run Start-All.cmd to use it again.',
+    'settings.title':'Access policy','settings.subtitle':'Define which local capabilities ChatGPT may use through RDC-X.','settings.deviceName':'Device name','settings.legacyOrigin':'Legacy OAuth HTTPS origin','settings.legacyOriginHint':'Only used by the legacy port 47831 OAuth MCP flow. Do not append /mcp.','settings.roots':'Authorized roots','settings.rootsHint':'The button above opens the native folder picker on this computer; you can also type a path. Click "Save access policy" to apply. In selected-directories mode an empty list denies all file access.',
+    'settings.rootsAll':'Authorize all directories','settings.rootsAllHint':'ChatGPT can reach any directory on this computer. Credential directories and tunnel-client stay protected.','settings.rootsSelected':'Authorize selected directories','settings.rootsSelectedHint':'Only the directories listed below are exposed. Add as many as you need and mark each one writable or read-only.','settings.rootsAllWarning':'With all directories authorized, file write approval is the only write gate. Keep it enabled unless you fully trust this session.',
+    'settings.rootsList':'Authorized directories','settings.rootsEmpty':'No directory selected yet. Use "Pick folder from File Explorer" to add one.','settings.pickFolder':'Pick folder from File Explorer','settings.addRoot':'Add','settings.rootPathPlaceholder':'Or type an absolute directory path, for example F:\\Project',
+    'settings.pickWaiting':'The folder picker is open on this computer. Choose a folder in that window…','settings.pickCancelled':'Folder selection cancelled.','settings.pickFailed':'Could not open the folder picker.','settings.pickTimeout':'Timed out waiting for the folder selection. Please retry.','settings.pickAdded':'Folder added.','settings.pickTitle':'Choose a folder to authorize for RDC-X','settings.pickBusy':'A folder picker is already waiting. Finish or close it first.',
+    'settings.rootInvalid':'Enter an absolute directory path, for example F:\\Project','settings.rootWrite':'Read + write','settings.rootRead':'Read only','settings.removeRoot':'Remove','settings.rootDuplicate':'That directory is already in the list.','settings.rootLimit':'You can authorize at most 20 directories.',
+    'settings.fileWriteApproval':'File write approval','settings.fileWriteApprovalHint':'Require per-action approval for file mutations; skipped automatically in a trusted session','settings.terminalCommands':'Terminal commands','settings.terminalCommandsHint':'Allow terminal command execution','settings.processControl':'System process control','settings.processControlHint':'Allow termination of arbitrary non-critical system processes','settings.desktopControl':'Desktop control','settings.desktopControlHint':'Allow screenshots, windows, mouse and keyboard control','settings.networkFetch':'Network text fetch','settings.networkFetchHint':'Allow public HTTP/HTTPS text retrieval',
+    'settings.terminalWarning':'Terminal execution is not an operating-system sandbox. Approved commands run with the current Windows user privileges. Use a dedicated low-privilege account or VM for stronger isolation.','settings.oauthHosts':'Allowed OAuth redirect hosts','settings.oauthHostsHint':'Exact hostnames separated by commas. Wildcards are not allowed.','settings.save':'Save access policy','settings.localService':'Local service','settings.shutdownHint':'Stopping RDC-X also stops the Secure MCP Tunnel managed by it.','settings.shutdown':'Stop RDC-X and Tunnel','settings.saved':'Access policy saved.','settings.rootInvalid':'Enter an absolute directory path, for example F:\\Project','settings.terminalConfirm':'Terminal is not an operating-system sandbox and commands run with the current Windows user privileges.\n\nEnable it?','settings.highPrivilegeConfirm':'You are enabling high-privilege process/desktop control. If the Tunnel is also trusted, ChatGPT may run these operations directly.\n\nContinue?','settings.shutdownConfirm':'Stop RDC-X and its managed Secure MCP Tunnel?\n\nRun Start-All.cmd to start it again.','settings.stopped':'RDC-X is stopping.','settings.stoppedGate':'RDC-X has stopped. Run Start-All.cmd to use it again.',
     'error.invalidResponse':'Invalid response from the local RDC-X service.','error.staleBackend':'The running RDC-X backend is older than this page. Run Start-All.cmd again so the backend and Dashboard use the same version.','error.requestFailed':'Request failed','error.adminKey':'Local admin key is required.','error.bootstrapKey':'Runtime API Key is required to enter the Dashboard.','error.tunnelId':'Tunnel ID must be tunnel_ followed by 32 lowercase hexadecimal characters.','error.tunnelTimeout':'Secure MCP Tunnel did not become Ready within 20 seconds. Check the Tunnel ID, Runtime API Key, network access and tunnel-client installation.','error.otherClient':'Another tunnel-client is already using 127.0.0.1:47834. Close the old tunnel-client and try again.',
     'status.pending':'Pending','status.approved':'Approved','status.rejected':'Rejected','status.completed':'Completed','status.failed':'Failed','status.started':'Started','status.stopped':'Stopped','status.updated':'Updated','status.resumed':'Resumed','status.paused':'Paused','status.forgotten':'Deleted','status.exited':'Exited'
   }
@@ -104,6 +114,7 @@ async function setLanguage(next) {
   locale = next === 'en' ? 'en' : 'zh-CN';
   localStorage.setItem('rdcx-lang', locale);
   applyI18n();
+  if (loadedSettings) { applyRootAccess(); renderRootList(); }
   if (snapshot && !$('dashboardShell').hidden) renderDashboard(snapshot);
   else if (!$('tunnelGate').hidden && key) await bootstrap();
 }
@@ -364,10 +375,101 @@ function renderLists(data) {
   auditRows($('auditList'), data.audit);
 }
 
+function rootAccessMode() {
+  return $('rootAccessAll').checked ? 'all' : 'selected';
+}
+
+function normalizeDirPath(value) {
+  const text = String(value ?? '').trim().replace(/^"|"$/g, '');
+  if (/^[a-zA-Z]:[\\/]+$/.test(text) || text === '/') return text;
+  return text.replace(/[\\/]+$/, '');
+}
+
+function isAbsoluteDirPath(value) {
+  return /^[a-zA-Z]:[\\/]/.test(value) || /^\//.test(value);
+}
+
+function addRootPaths(paths) {
+  let added = 0;
+  for (const raw of paths) {
+    const value = normalizeDirPath(raw);
+    if (!value || !isAbsoluteDirPath(value)) continue;
+    if (selectedRoots.some(root => root.path.toLowerCase() === value.toLowerCase())) continue;
+    if (selectedRoots.length >= 20) { toast(t('settings.rootLimit'), true); break; }
+    selectedRoots.push({ path: value, write: true });
+    added++;
+  }
+  renderRootList();
+  return added;
+}
+
+function renderRootList() {
+  const list = $('rootList');
+  if (!selectedRoots.length) { empty(list, t('settings.rootsEmpty')); return; }
+  list.replaceChildren(...selectedRoots.map((root, index) => {
+    const row = node('div', undefined, 'root-row');
+    const select = document.createElement('select');
+    select.className = 'root-access';
+    for (const option of [['rw', t('settings.rootWrite')], ['ro', t('settings.rootRead')]]) {
+      const item = document.createElement('option');
+      item.value = option[0];
+      item.textContent = option[1];
+      if ((root.write ? 'rw' : 'ro') === option[0]) item.selected = true;
+      select.append(item);
+    }
+    select.addEventListener('change', () => { selectedRoots[index].write = select.value === 'rw'; });
+
+    const remove = node('button', t('settings.removeRoot'), 'link-button danger-text');
+    remove.type = 'button';
+    remove.addEventListener('click', () => { selectedRoots.splice(index, 1); renderRootList(); });
+
+    row.append(node('code', root.path), select, remove);
+    return row;
+  }));
+}
+
+function applyRootAccess() {
+  const all = rootAccessMode() === 'all';
+  $('rootSelection').hidden = all;
+  $('rootAllWarning').hidden = !all;
+}
+
+function waitForFolderPick(id) {
+  return new Promise((resolve, reject) => {
+    let waited = 0;
+    const status = $('pickStatus');
+    const tick = async () => {
+      try {
+        const pick = await api('/folder-pick/' + encodeURIComponent(id));
+        if (pick.status === 'selected') {
+          const added = addRootPaths(pick.paths || []);
+          status.textContent = added ? t('settings.pickAdded') : t('settings.rootDuplicate');
+          resolve();
+          return;
+        }
+        if (pick.status === 'cancelled') { status.textContent = t('settings.pickCancelled'); resolve(); return; }
+        if (pick.status === 'error') throw new Error(pick.error || t('settings.pickFailed'));
+      } catch (error) {
+        status.textContent = '';
+        reject(error);
+        return;
+      }
+      waited += 1200;
+      if (waited > 600000) { status.textContent = ''; reject(new Error(t('settings.pickTimeout'))); return; }
+      setTimeout(tick, 1200);
+    };
+    void tick();
+  });
+}
+
 function populateSettings(config) {
   $('name').value = config.name;
   $('publicUrl').value = config.publicUrl;
-  $('rootsInput').value = config.roots.map(root => (root.write ? 'rw' : 'ro') + ' | ' + root.path).join('\n');
+  selectedRoots = (config.roots ?? []).map(root => ({ path: root.path, write: !!root.write }));
+  $('rootAccessAll').checked = config.rootAccess === 'all';
+  $('rootAccessSelected').checked = config.rootAccess !== 'all';
+  applyRootAccess();
+  renderRootList();
   $('writeApproval').checked = config.requireWriteApproval;
   $('terminalEnabled').checked = config.terminalEnabled;
   $('systemProcessEnabled').checked = !!config.systemProcessControlEnabled;
@@ -389,7 +491,7 @@ function renderDashboard(data) {
   $('heroStatus').textContent = locale === 'zh-CN' ? '就绪' : 'READY';
   $('heroTunnelId').textContent = shortTunnelId(tunnel.tunnelId);
   $('heroEndpoint').textContent = tunnel.endpoint.replace(/^http:\/\//, '');
-  $('rootCount').textContent = config.roots.length;
+  $('rootCount').textContent = config.rootAccess === 'all' ? (locale === 'zh-CN' ? '全部' : 'ALL') : config.roots.length;
   $('pendingCount').textContent = pending;
   $('sessionCount').textContent = runningSessions;
   $('terminalSummary').textContent = config.terminalEnabled ? t('overview.terminalEnabled') : t('overview.terminalDisabled');
@@ -566,11 +668,8 @@ for (const [id, url] of [['revoke', '/revoke'], ['resetClients', '/clients/reset
 $('settingsForm').addEventListener('submit', async event => {
   event.preventDefault();
   try {
-    const roots = $('rootsInput').value.split('\n').filter(value => value.trim()).map(line => {
-      const match = /^(rw|ro)\s*\|\s*(.+)$/i.exec(line.trim());
-      if (!match) throw new Error(t('settings.badRoot'));
-      return { path: match[2].trim(), write: match[1].toLowerCase() === 'rw' };
-    });
+    const rootAccess = rootAccessMode();
+    const roots = selectedRoots.map(root => ({ path: root.path, write: root.write }));
 
     if ($('terminalEnabled').checked && !snapshot.config.terminalEnabled && !confirm(t('settings.terminalConfirm'))) return;
 
@@ -581,6 +680,7 @@ $('settingsForm').addEventListener('submit', async event => {
     await api('/config', {
       name: $('name').value.trim(),
       publicUrl: $('publicUrl').value.trim(),
+      rootAccess,
       roots,
       requireWriteApproval: $('writeApproval').checked,
       terminalEnabled: $('terminalEnabled').checked,
@@ -597,6 +697,35 @@ $('settingsForm').addEventListener('submit', async event => {
   } catch (error) {
     toast(error.message, true);
   }
+});
+
+$('rootAccessAll').addEventListener('change', applyRootAccess);
+$('rootAccessSelected').addEventListener('change', applyRootAccess);
+
+$('pickFolder').addEventListener('click', async () => {
+  if (picking) { toast(t('settings.pickBusy'), true); return; }
+  picking = true;
+  const button = $('pickFolder');
+  const status = $('pickStatus');
+  button.disabled = true;
+  status.textContent = t('settings.pickWaiting');
+  try {
+    const pick = await api('/folder-pick', { title: t('settings.pickTitle') });
+    await waitForFolderPick(pick.id);
+  } catch (error) {
+    toast(error.message, true);
+  } finally {
+    button.disabled = false;
+    picking = false;
+  }
+});
+
+$('addRootManual').addEventListener('click', async () => {
+  const value = normalizeDirPath($('rootManualInput').value);
+  if (!value || !isAbsoluteDirPath(value)) { toast(t('settings.rootInvalid'), true); return; }
+  if (!addRootPaths([value])) { toast(t('settings.rootDuplicate'), true); return; }
+  $('rootManualInput').value = '';
+  $('pickStatus').textContent = '';
 });
 
 $('shutdownService').addEventListener('click', async () => {

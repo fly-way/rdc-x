@@ -310,6 +310,21 @@ code{font-family:"SFMono-Regular","Cascadia Code",Consolas,monospace}
 .field input{height:47px}
 .field textarea{resize:vertical;font-family:"SFMono-Regular",Consolas,"Microsoft YaHei",monospace;line-height:1.55}
 .field input:focus,.field textarea:focus{border-color:rgba(16,166,106,.58);box-shadow:0 0 0 4px var(--accent-glow);outline:0}
+.root-mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:4px}
+.root-mode-card{min-height:82px;border:1px solid var(--line);border-radius:15px;padding:15px;display:flex;align-items:flex-start;gap:12px;cursor:pointer;background:rgba(250,250,252,.72)}
+.root-mode-card:hover{background:#fff}
+.root-mode-card input{margin-top:3px;width:17px;height:17px;accent-color:var(--accent)}
+.root-mode-card span{display:flex;flex-direction:column;gap:4px}
+.root-mode-card b{font-size:13px}.root-mode-card small{font-size:11px;color:var(--muted);line-height:1.5}
+.root-list{display:flex;flex-direction:column;gap:9px;margin:10px 0}
+.root-row{display:flex;align-items:center;gap:11px;border:1px solid var(--line);border-radius:13px;padding:11px 13px;background:rgba(255,255,255,.78)}
+.root-row code{flex:1;min-width:0;overflow-wrap:anywhere;font:12px/1.5 "SFMono-Regular",Consolas,monospace;color:#3f3f44}
+.root-row select{height:36px;border:1px solid var(--line-strong);border-radius:10px;background:#fff;color:var(--text-2);padding:0 9px;font-size:12px;font-weight:600}
+.root-row select:focus{border-color:rgba(16,166,106,.58);box-shadow:0 0 0 4px var(--accent-glow);outline:0}
+.pick-status{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.inline-row{display:flex;gap:10px;align-items:center;margin-top:11px;flex-wrap:wrap}
+.inline-row input{flex:1;min-width:220px;height:44px;border:1px solid var(--line-strong);border-radius:12px;background:rgba(255,255,255,.82);color:var(--text);padding:10px 13px;font-size:13px}
+.inline-row input:focus{border-color:rgba(16,166,106,.58);box-shadow:0 0 0 4px var(--accent-glow);outline:0}
 .toggle-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:20px 0}
 .toggle-card{min-height:82px;border:1px solid var(--line);border-radius:15px;padding:15px;display:flex;align-items:flex-start;gap:12px;cursor:pointer;background:rgba(250,250,252,.72)}
 .toggle-card:hover{background:#fff}

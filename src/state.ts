@@ -12,11 +12,13 @@ export const configSchema = z.object({
   tunnelPort: z.number().int().min(1024).max(65535).default(47833),
   publicUrl: z.string().url().default('http://127.0.0.1:47831'),
   roots: z.array(z.object({ path: z.string().min(1), write: z.boolean() })).max(20),
+  rootAccess: z.enum(['all','selected']).default('selected'),
   requireWriteApproval: z.boolean().default(true),
-  terminalEnabled: z.boolean().default(false),
-  systemProcessControlEnabled: z.boolean().default(false),
-  desktopControlEnabled: z.boolean().default(false),
-  networkFetchEnabled: z.boolean().default(false),
+  terminalEnabled: z.boolean().default(true),
+  systemProcessControlEnabled: z.boolean().default(true),
+  desktopControlEnabled: z.boolean().default(true),
+  networkFetchEnabled: z.boolean().default(true),
+  policyDefaultsApplied: z.boolean().default(false),
   secureTunnelEnabled: z.boolean().default(false),
   commandPolicyMode: z.enum(['off','blocklist','allowlist']).default('blocklist'),
   blockedCommandPatterns: z.array(z.string().min(1).max(300)).max(100).default([]),
@@ -67,6 +69,7 @@ export class State {
     for (const root of c.roots) {
       if (!path.isAbsolute(root.path))
         throw new Error('Each allowed root must be an absolute directory path.');
+      if (c.rootAccess === 'all') continue;
       if (!fs.existsSync(root.path))
         throw new Error(`Authorized root does not exist: ${root.path}`);
       if (!fs.statSync(root.path).isDirectory())

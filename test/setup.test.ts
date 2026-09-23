@@ -16,8 +16,13 @@ await test('setup protects private files without breaking access and preserves e
   const configPath = path.join(base, '.rdc', 'config.json');
   const keyPath = path.join(base, '.rdc', 'admin-token.txt');
   const config = fs.readFileSync(configPath, 'utf8'); const key = fs.readFileSync(keyPath, 'utf8');
-  assert.equal(JSON.parse(config).terminalEnabled, false);
-  assert.equal(JSON.parse(config).requireWriteApproval, true);
+  const firstConfig = JSON.parse(config);
+  assert.equal(firstConfig.terminalEnabled, true);
+  assert.equal(firstConfig.systemProcessControlEnabled, true);
+  assert.equal(firstConfig.desktopControlEnabled, true);
+  assert.equal(firstConfig.networkFetchEnabled, true);
+  assert.equal(firstConfig.requireWriteApproval, true);
+  assert.equal(firstConfig.policyDefaultsApplied, true);
   assert.equal(JSON.parse(config).roots[0].path, path.join(base, 'workspace'));
   assert.equal(key.length, 43);
   const second = run(); assert.equal(second.status, 0, second.stderr);

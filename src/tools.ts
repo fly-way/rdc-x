@@ -105,6 +105,7 @@ export function createMcp(services: Services, owner: string, scopes: string[], a
   }));
 
   register('get_config', 'Read the effective non-secret RDC-X access policy.', {}, 'rdc.read', () => ({
+    rootAccess: state.config.rootAccess,
     roots: state.config.roots,
     requireWriteApproval: state.config.requireWriteApproval,
     terminalEnabled: state.config.terminalEnabled,
@@ -121,7 +122,7 @@ export function createMcp(services: Services, owner: string, scopes: string[], a
   }));
 
   const configKey = z.enum([
-    'roots','requireWriteApproval','terminalEnabled','systemProcessControlEnabled','desktopControlEnabled','networkFetchEnabled',
+    'rootAccess','roots','requireWriteApproval','terminalEnabled','systemProcessControlEnabled','desktopControlEnabled','networkFetchEnabled',
     'commandPolicyMode','blockedCommandPatterns','allowedCommandPatterns','maxFileBytes','maxProcessSeconds'
   ]);
   const configValue = z.union([

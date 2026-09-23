@@ -311,11 +311,34 @@
                 </label>
               </div>
 
-              <label class="field">
+              <div class="field">
                 <span data-i18n="settings.roots">授权目录</span>
-                <textarea id="rootsInput" rows="7" spellcheck="false"></textarea>
-                <small data-i18n-html="settings.rootsHint">每行使用 <code>rw | path</code> 或 <code>ro | path</code>。空列表会禁止全部文件访问。</small>
-              </label>
+                <div class="root-mode-grid">
+                  <label class="root-mode-card">
+                    <input type="radio" name="rootAccess" id="rootAccessAll" value="all">
+                    <span><b data-i18n="settings.rootsAll">授权所有目录</b><small data-i18n="settings.rootsAllHint">ChatGPT 可访问本机任意目录。凭据目录与 tunnel-client 仍然受保护。</small></span>
+                  </label>
+                  <label class="root-mode-card">
+                    <input type="radio" name="rootAccess" id="rootAccessSelected" value="selected">
+                    <span><b data-i18n="settings.rootsSelected">授权指定目录</b><small data-i18n="settings.rootsSelectedHint">只开放下面选择的目录。可以多次添加，每个目录可单独设为可写或只读。</small></span>
+                  </label>
+                </div>
+                <div class="inline-alert warning-alert" id="rootAllWarning" data-i18n="settings.rootsAllWarning" hidden></div>
+              </div>
+
+              <div class="field" id="rootSelection">
+                <span data-i18n="settings.rootsList">已授权的目录</span>
+                <div id="rootList" class="root-list"></div>
+                <div class="actions">
+                  <button type="button" id="pickFolder" class="outline" data-i18n="settings.pickFolder">从文件资源管理器选择文件夹</button>
+                  <span id="pickStatus" class="pick-status"></span>
+                </div>
+                <div class="inline-row">
+                  <input id="rootManualInput" spellcheck="false" data-i18n-placeholder="settings.rootPathPlaceholder">
+                  <button type="button" id="addRootManual" class="outline" data-i18n="settings.addRoot">添加目录</button>
+                </div>
+                <small data-i18n-html="settings.rootsHint">点击上面的按钮会在本机打开文件资源管理器选择窗口，也可以手动输入路径。添加后点击“保存访问策略”生效；指定目录模式下的空列表会禁止全部文件访问。</small>
+              </div>
 
               <div class="toggle-grid">
                 <label class="toggle-card"><input id="writeApproval" type="checkbox"><span><b data-i18n="settings.fileWriteApproval">文件写入审批</b><small data-i18n="settings.fileWriteApprovalHint">默认要求文件修改逐次审批</small></span></label>

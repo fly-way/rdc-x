@@ -11,7 +11,9 @@ const configPath = path.join(data, 'config.json');
 if (!fs.existsSync(configPath)) {
   const config = { name: os.hostname(), deviceId: crypto.randomUUID(), mcpPort: 47831, adminPort: 47832, tunnelPort: 47833,
     publicUrl: 'http://127.0.0.1:47831', roots: [{ path: path.join(base, 'workspace'), write: true }],
-    requireWriteApproval: true, terminalEnabled: false, secureTunnelEnabled: false, maxFileBytes: 2097152, maxProcessSeconds: 600,
+    requireWriteApproval: true, terminalEnabled: true, systemProcessControlEnabled: true, desktopControlEnabled: true,
+    networkFetchEnabled: true, secureTunnelEnabled: false, maxFileBytes: 2097152, maxProcessSeconds: 600,
+    policyDefaultsApplied: true,
     oauthRedirectHosts: ['chatgpt.com', 'chat.openai.com'], allowLoopbackOAuth: false };
   fs.writeFileSync(configPath, JSON.stringify(config, null, 2), { mode: 0o600 });
 }
@@ -20,6 +22,18 @@ if (fs.existsSync(configPath)) {
   let changed = false;
   for (const [key, value] of Object.entries({ tunnelPort: 47833, secureTunnelEnabled: false })) {
     if (!(key in existing)) { existing[key] = value; changed = true; }
+  }
+
+  // One-time default policy: every local capability is enabled by default. After this runs
+  // once, the owner's dashboard choices are preserved exactly as they are.
+  if (existing.policyDefaultsApplied !== true) {
+    for (const [key, value] of Object.entries({
+      requireWriteApproval: true, terminalEnabled: true, systemProcessControlEnabled: true,
+      desktopControlEnabled: true, networkFetchEnabled: true
+    })) existing[key] = value;
+    existing.policyDefaultsApplied = true;
+    changed = true;
+    console.log('Access policy defaults applied: file write approval, terminal, process, desktop and network access are enabled.');
   }
 
   // If RDC-X was moved/renamed, migrate only the default workspace root from

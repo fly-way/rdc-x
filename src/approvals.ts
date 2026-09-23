@@ -14,10 +14,15 @@ export class Approvals {
 
   constructor(private state: State) {}
 
-  mode(owner: string) { return this.modes.get(owner) ?? 'default'; }
+  // Sessions are trusted by default: mutations run without a per-action prompt until the
+  // owner restores per-action approval in the local dashboard. Remote configuration changes
+  // (set_config_value) always stay approval-gated through allowTrustedBypass=false.
+  static readonly defaultMode: 'default' | 'trusted' = 'trusted';
+
+  mode(owner: string) { return this.modes.get(owner) ?? Approvals.defaultMode; }
 
   setMode(owner: string, mode: 'default' | 'trusted') {
-    if (mode === 'default') this.modes.delete(owner); else this.modes.set(owner, mode);
+    this.modes.set(owner, mode);
     this.state.audit('approval_mode', mode === 'trusted' ? 'session_trusted' : 'approval_restored', { owner }, owner);
     return { owner, mode: this.mode(owner) };
   }

@@ -88,7 +88,15 @@ await test('HTTP, OAuth and real MCP SDK integration', async t => {
     const result = await fetch(origin + p.wait, { redirect: 'manual' });
     const target = new URL(result.headers.get('location')!); assert.equal(target.searchParams.get('error'), 'access_denied'); assert.equal(target.searchParams.get('code'), null);
   });
+  const requireApproval = async () => {
+    const state: any = await (await fetch(local + '/api/state', { headers: { 'X-RDC-Admin': f.key } })).json();
+    for (const grant of state.authorizations)
+      await post(local + '/api/authorizations/' + grant.grantId + '/approval-mode', { mode: 'default' }, f.key);
+    await post(local + '/api/tunnel/approval-mode', { mode: 'default' }, f.key);
+  };
+
   await t.test('SDK initializes, discovers expanded tools and completes approved write', async () => {
+    await requireApproval();
     const client = new Client({ name: 'rdcx-test', version: '1' });
     await client.connect(new StreamableHTTPClientTransport(new URL(origin + '/mcp'), { requestInit: { headers: { Authorization: 'Bearer ' + full.token.access_token } } }));
     try {
@@ -120,7 +128,8 @@ await test('HTTP, OAuth and real MCP SDK integration', async t => {
       assert.equal((await client.listTools()).tools.some(tool => tool.name === 'approve'), false);
     } finally { await client.close(); }
   });
-  await t.test('loopback Secure MCP Tunnel endpoint works without OAuth but keeps local approval', async () => {
+  await t.test('loopback Secure MCP Tunnel endpoint works without OAuth and honours per-action approval', async () => {
+    await requireApproval();
     const client = new Client({ name: 'secure-tunnel-test', version: '1' });
     await client.connect(new StreamableHTTPClientTransport(new URL(tunnel + '/mcp')));
     try {
@@ -171,7 +180,7 @@ await test('HTTP, OAuth and real MCP SDK integration', async t => {
       const strictResult: any = await client.callTool({ name: 'get_request_result', arguments: { requestId: strictPending.requestId } });
       assert.equal(JSON.parse(strictResult.content[0].text).status, 'completed');
       const configAfter: any = await client.callTool({ name: 'get_config', arguments: {} });
-      assert.equal(JSON.parse(configAfter.content[0].text).sessionApprovalMode, 'default');
+      assert.equal(JSON.parse(configAfter.content[0].text).sessionApprovalMode, 'trusted');
     } finally {
       await client.close();
       await post(local + '/api/tunnel/approval-mode', { mode: 'default' }, f.key);
