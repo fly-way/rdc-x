@@ -269,7 +269,6 @@ node scripts\install-tunnel.mjs
 npm.cmd run build
 npm.cmd test
 npm.cmd run doctor
-npm.cmd run drill
 node scripts\verify.mjs
 ```
 

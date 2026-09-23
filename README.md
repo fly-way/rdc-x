@@ -252,7 +252,6 @@ Useful development/diagnostic commands:
 npm.cmd run build
 npm.cmd test
 npm.cmd run doctor
-npm.cmd run drill
 node scripts\verify.mjs
 ```
 

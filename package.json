@@ -15,8 +15,7 @@
     "test": "tsx --test test/*.test.ts",
     "check": "tsc --noEmit && node --check public/app.js && node --check scripts/dashboard.mjs && node --check scripts/launch.mjs && node --check scripts/doctor.mjs",
     "doctor": "node scripts/doctor.mjs",
-    "drill": "tsx scripts/live-drill.ts",
-    "drill:desktop": "tsx scripts/desktop-drill.ts",
+
     "tunnel": "node scripts/tunnel.mjs"
   },
   "dependencies": {
